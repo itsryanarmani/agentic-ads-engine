@@ -21,7 +21,7 @@ try {
   }
   if (action === 'plan' && argv.some(arg => arg === '--format' || arg.startsWith('--format='))) action = 'plan_format';
   const schema = tools.find(t => t.name === action)?.inputSchema;
-  if (!schema) throw new Error('Use hooks, qa-rules, formats, list-templates, list-hooks, lint, or plan');
+  if (!schema) throw new Error('Use hooks, qa-rules, formats, list-templates, list-hooks, lint, plan, or serve');
   while (argv.length) {
     const option = argv.shift(), separator = option.indexOf('=');
     const flag = separator < 0 ? option : option.slice(0, separator);

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
 import { execute, tools } from '../src/index.js';
+const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
 // MCP stdio uses one JSON-RPC message per line. stdout is protocol-only.
 const send = message => process.stdout.write(JSON.stringify(message) + '\n');
 const fail = (id, code, message) => send({ jsonrpc: '2.0', id, error: { code, message } });
@@ -17,7 +19,7 @@ function receive(line) {
   if (method === 'initialize') {
     if (typeof params.protocolVersion !== 'string') { fail(id, -32602, 'Missing protocol version'); return; }
     initialized = true;
-    result = { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'agentic-ads-engine', version: '0.1.0' } };
+    result = { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'agentic-ads-engine', version } };
   } else if (method === 'ping') result = {};
   else if (!initialized) { fail(id, -32002, 'Initialize first'); return; }
   else if (method === 'tools/list') result = { tools };
