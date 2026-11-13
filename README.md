@@ -137,7 +137,7 @@ It records failures and the restored pass in `test/artifacts/formats-mutations.j
 
 ### Owner feedback checks
 
-`agentic-ads qa-rules` lists R1 through R18. Use `agentic-ads qa-rules show R5`
+`agentic-ads qa-rules` lists R1 through R26. Use `agentic-ads qa-rules show R5`
 to read one rule. MCP provides `list_qa_rules` and `get_qa_rule` with an `id` argument.
 
 Each format declares `kinds` and `feedbackRules`. A format plan includes

@@ -26,7 +26,7 @@ const costExpected = [
 ].join('\n');
 check('QA rule catalog', () => {
   assert.equal(qa.status, 0);
-  assert.deepEqual(qa.value.map(r => r.id), Array.from({ length: 18 }, (_, i) => `R${i + 1}`), 'QA rule IDs');
+  assert.deepEqual(qa.value.map(r => r.id), Array.from({ length: 26 }, (_, i) => `R${i + 1}`), 'QA rule IDs');
   for (const r of qa.value) {
     for (const key of ['title', 'check', 'origin', 'severity']) assert.ok(typeof r[key] === 'string' && r[key].trim(), `QA non-empty ${key}: ${r.id}`);
     assert.ok(r.applies.length && r.applies.every(k => typeof k === 'string' && k.trim()));
@@ -45,10 +45,11 @@ check('QA pinned formats', () => {
     assert.deepEqual(f.feedbackRules, expected.feedbackRules, `QA pinned rules: ${f.id}`);
     assert.equal(new Set(f.feedbackRules).size, f.feedbackRules.length);
     assert.ok(f.feedbackRules.every(id => qa.value.some(r => r.id === id)), 'QA unknown reference');
-    const required = ['R1', 'R6', 'R14', 'R17', 'R18',
-      ...(f.stages.includes('captions') ? ['R10'] : []),
-      ...(f.kinds.includes('dialogue') ? ['R11', 'R13'] : []),
+    const required = ['R1', 'R6', 'R14', 'R17', 'R18', 'R19',
+      ...(f.stages.includes('captions') ? ['R10', 'R23'] : []),
+      ...(f.kinds.includes('dialogue') ? ['R11', 'R13', 'R21', 'R22'] : []),
       ...(f.kinds.includes('story') ? ['R2', 'R5', 'R9'] : [])];
+    if (f.kinds.some(k => ['story', 'character'].includes(k))) required.push('R20', 'R26');
     for (const r of qa.value.filter(r => r.applies.some(k => k === 'all' || f.kinds.includes(k)))) required.push(r.id);
     for (const id of required) assert.ok(f.feedbackRules.includes(id), `QA required ${id}: ${f.id}`);
   }
