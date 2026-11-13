@@ -22,6 +22,7 @@ function cli(...args) {
 const formats = cli('formats');
 const qa = cli('qa-rules');
 const qaExpected = JSON.parse(await readFile('test/qa-expectations.json', 'utf8'));
+const gatesText = JSON.parse(await readFile('src/qa/gates.json', 'utf8'));
 const pinnedQa = JSON.parse(await readFile('test/qa-rules-expected.json', 'utf8'));
 const costExpected = [
   'Set a hard cap before you spend. One writer per spend log.',
@@ -149,6 +150,8 @@ check('new styles retain evidence and required rules', () => {
   const byId = id => formats.value.find(f => f.id === id).feedbackRules;
   for (const id of ['R13', 'R21', 'R22']) assert.ok(!byId('horror-comic').includes(id), `horror-comic has one character: no ${id}`);
   assert.ok(!byId('backrooms-dialogue').includes('R25'), 'backrooms-dialogue plans no scare: R25 belongs to horror-comic');
+  for (const id of ['street-interview', 'backrooms-dialogue', 'horror-comic']) assert.equal(formats.value.find(f => f.id === id).durationSeconds.min, 16, `${id} minimum length follows the measured videos`);
+  assert.match(gatesText.voice_consistency, /provisional/, 'voice gate stays a provisional proxy');
 });
 check('audio gate instructions preserve limits', () => {
   for (const [id, terms] of Object.entries({
