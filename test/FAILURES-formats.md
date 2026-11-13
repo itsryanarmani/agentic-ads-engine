@@ -21,5 +21,8 @@
 - Tests claim success without spawning both executables or writing repeatable evidence.
 - Deliberate missing-gate, duplicate-ID, and live-plan mutations pass E2E checks.
 
+- Exact QA gates, cost class, policy risk, or required policy words change.
+- CLI and MCP disagree on missing fields or apply refusal; undocumented flags pass.
+
 Verification uses the public CLI, MCP process, and a library integration child.
 No provider runs in this slice. Historical prices and subjective audio quality remain unverified today.

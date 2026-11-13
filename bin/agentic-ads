@@ -14,7 +14,8 @@ try {
     const flag = argv.shift();
     if (!flag.startsWith('--')) throw new Error('Expected an option');
     const key = flag === '--dry-run' ? 'dryRun' : flag === '--cost-class' ? 'costClass' : flag.slice(2);
-    if (!Object.hasOwn(schema.properties, key) || Object.hasOwn(args, key)) throw new Error('Unknown or repeated option');
+    if (flag === '--apply' && ['plan', 'plan_format'].includes(action)) throw new Error('Apply is unavailable in this offline slice');
+    if (['--costClass', '--dryRun'].includes(flag) || !Object.hasOwn(schema.properties, key) || Object.hasOwn(args, key)) throw new Error('Unknown or repeated option');
     if (schema.properties[key].type === 'boolean') args[key] = true;
     else {
       if (!argv.length || argv[0].startsWith('--')) throw new Error('Missing option value');

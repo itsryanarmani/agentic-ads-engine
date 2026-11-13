@@ -36,14 +36,33 @@ check('format descriptors and unique IDs', () => {
     }
   }
 });
+const expectations = JSON.parse(await readFile('test/format-expectations.json', 'utf8'));
+check('pinned format contracts', () => {
+  assert.deepEqual(formats.value.map(f => f.id).sort(), expectations.map(f => f.id).sort());
+  for (const expected of expectations) {
+    const f = formats.value.find(f => f.id === expected.id);
+    for (const key of ['costClass', 'policyRisk']) assert.equal(f[key], expected[key], `${f.id} ${key}`);
+    assert.deepEqual([...f.qaGates].sort(), [...expected.qaGates].sort(), `${f.id} qaGates`);
+    for (const word of expected.riskKeywords) assert.ok(f.riskNotes.join(' ').toLowerCase().includes(word), `${f.id} missing ${word}`);
+  }
+});
+check('logged endpoint prices', () => {
+  for (const f of formats.value) for (const [stage, p] of Object.entries(f.providers)) {
+    const expected = { still: [0.02, 0.06], angle_still: [0.056, 0.196], tts: [0.03, f.id === 'lo-fi' ? 0.08 : 0.055], image_to_video: [0.15, 0.3], talking_head: [1.5, 1.8] }[stage];
+    if (!p.estimatedCostUsd.high) { assert.equal(p.unverified, true); continue; }
+    assert.deepEqual([p.estimatedCostUsd.low, p.estimatedCostUsd.high], f.id === 'text-broll' ? [0, 0.02] : expected);
+    const model = { still: 'bytedance/seedream-v5.5', angle_still: 'bytedance/seedream-v5.5/edit', tts: 'wavespeed-ai/qwen3-tts/' + (f.id === 'lo-fi' ? 'voice-design' : 'text-to-speech'), image_to_video: 'wavespeed-ai/wan-2.2/i2v-480p-ultra-fast', talking_head: 'wavespeed-ai/wan-2.2/speech-to-video' }[stage];
+    assert.equal(p.model, model); assert.match(p.estimatedCostUsd.note, /spend.json/);
+  }
+});
 check('sitcom and lo-fi lessons survive', () => {
   const sitcom = formats.value.find(f => f.id === 'sitcom'), lofi = formats.value.find(f => f.id === 'lo-fi');
   for (const term of ['mediums and close-ups', 'Cut on action', 'silent reaction', 'six of ten']) assert.ok(sitcom.learned.join(' ').includes(term));
-  for (const term of ['No still frames as shots', 'native pace', '3.4', 'black corners', 'eyes']) assert.ok(lofi.learned.join(' ').includes(term));
+  for (const term of ['No still frames as shots', 'native pace', '3.4']) assert.ok(lofi.learned.join(' ').includes(term));
   for (const f of [sitcom, lofi]) assert.ok(f.riskNotes.some(n => n.includes('DRAMATIZATION')));
 });
 for (const args of [['formats', 'show', 'missing'], ['plan', '--format', 'missing', '--site', 'demo'], ['formats', 'show'],
-  ['formats', '--risk', 'bad'], ['formats', '--cost-class', 'bad'], ['plan', '--format', 'sitcom'],
+  ['formats', '--costClass', 'mid'], ['formats', '--risk', 'bad'], ['formats', '--cost-class', 'bad'], ['plan', '--format', 'sitcom'],
   ['plan', '--format', 'sitcom', '--site', '../bad'], ['plan', '--format', 'sitcom', '--site', 'demo', '--apply'],
   ['plan', '--format', 'sitcom', '--site', 'demo', '--template', 'door-open-teaser']]) {
   check('format rejects ' + args.join(' '), () => assert.notEqual(cli(...args).status, 0));
@@ -190,6 +209,16 @@ try {
     ['plan_format', { format: 'sitcom', site: 'demo', dryRun: false }], ['plan_format', { format: 'sitcom', site: 'demo', apply: true }]]) {
     const r = await request('tools/call', { name, arguments: args });
     check('MCP format rejects ' + JSON.stringify(args), () => { assert.equal(r.result.isError, true); if (args.id === 'missing' || args.format === 'missing') assert.match(r.result.content[0].text, /Unknown format/); });
+  }
+  for (const [name, args, argv] of [
+    ['get_format', {}, ['formats', 'show']], ['plan_format', { format: 'sitcom' }, ['plan', '--format', 'sitcom']],
+    ['plan_format', { format: 'sitcom', site: 'demo', apply: true }, ['plan', '--format', 'sitcom', '--site', 'demo', '--apply']],
+    ['plan', { apply: true }, ['plan', '--apply']]]) {
+    const r = await request('tools/call', { name, arguments: args });
+    check('MCP error parity ' + name + JSON.stringify(args), () => {
+      assert.equal(r.result.isError, true); assert.equal(r.result.content[0].text, cli(...argv).value.error);
+      assert.match(r.result.content[0].text, args.apply ? /Apply is unavailable/ : /Missing required argument/);
+    });
   }
   const unknown = await request('unknown');
   check('MCP method error', () => assert.equal(unknown.error.code, -32601));

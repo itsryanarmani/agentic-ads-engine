@@ -23,6 +23,8 @@ export const tools = Object.entries(fields).map(([name, properties]) => ({
 export function execute(action, args = {}) {
   if (!Object.hasOwn(fields, action)) throw new Error('Unknown action');
   if (!args || typeof args !== 'object' || Array.isArray(args)) throw new Error('Invalid arguments');
+  if (args.apply === true && ['plan', 'plan_format'].includes(action)) throw new Error('Apply is unavailable in this offline slice');
+  for (const key of tools.find(t => t.name === action).inputSchema.required ?? []) if (args[key] === undefined) throw new Error('Missing required argument: ' + key);
   for (const [key, value] of Object.entries(args)) {
     const field = fields[action][key];
     if (!Object.hasOwn(fields[action], key) || typeof value !== field.type || (field.enum && !field.enum.includes(value))) throw new Error('Invalid argument');
