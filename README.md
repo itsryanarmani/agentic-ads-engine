@@ -175,7 +175,7 @@ The library exports `listHooks`, `getHook`, and `pickHooks(filter, scores = {})`
 Picks rank matching hooks by descending score. Catalog order resolves ties.
 `selectFor(site, goal, filter = {})` retains its low-risk rule and returns one hook or `null`.
 The original two-argument call still works. Filters apply before score ranking.
-Picks can include medium- and high-risk patterns unless `housing: true` excludes them.
+`housing: true` keeps only hooks with `housingSafe: true`. It does not filter by risk level, so medium-risk hooks can still appear.
 
 `housingSafe` means the pattern passes housing lint with generic slot values and contains no eligibility claim, invented number, or testimonial.
 It does not approve arbitrary slot values or rendered media. Fill every slot and lint the final copy before use.

@@ -153,6 +153,7 @@ const hookCases = [['list_hooks', {}, hooks.value]];
 const hookExpected = JSON.parse(await readFile('test/hook-expectations.json', 'utf8'));
 check('hook catalog schema and references', () => {
   assert.deepEqual(cli('hooks'), hooks);
+  assert.deepEqual(cli('hooks', 'list'), hooks, 'hooks list');
   assert.ok(hooks.value.length >= 40, 'at least 40 hooks');
   assert.equal(new Set(hooks.value.map(h => h.id)).size, hooks.value.length, 'duplicate hook ID');
   for (const h of hooks.value) {

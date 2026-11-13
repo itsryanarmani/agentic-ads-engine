@@ -6,7 +6,7 @@ try {
   if (action === 'hooks') {
     action = argv[0] === 'show' ? 'get_hook' : argv[0] === 'pick' ? 'pick_hooks' : 'list_hooks';
     if (action === 'get_hook') { argv.shift(); args.id = argv.shift(); }
-    if (action === 'pick_hooks') argv.shift();
+    if (action === 'pick_hooks' || argv[0] === 'list') argv.shift();
   }
   if (action === 'qa-rules') {
     action = argv[0] === 'show' ? 'get_qa_rule' : 'list_qa_rules';
