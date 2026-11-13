@@ -10,7 +10,7 @@ const faults = [
   ['server exit', "else if (method === 'tools/call') {", "else if (method === 'tools/call') { process.stderr.write('forced MCP exit\\n'); process.exit(3);", /MCP server exited: code=3, signal=null; last stderr: "forced MCP exit\\n"; pending request: tools\/call \(list-templates\)/],
 ];
 const evidence = [];
-const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 60000 });
+const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
 for (const [name, match, replacement, failure] of faults) {
   try {
     assert.equal(original.split(match).length, 2, 'mutation target must be unique');

@@ -596,11 +596,13 @@ for (const [host, expected] of [['evil.com', 403], [`evil.com:${new URL(hostApi.
   check('API Host header ' + host, () => assert.equal(status, expected, 'API Host header ' + host));
 }
 await hostApi.stop();
-const weak = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', '--port', '0'], { encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: 'short-token' } });
-check('API startup rejects a short token', () => {
-  assert.equal(weak.status, 1, 'short token accepted'); assert.equal((weak.stdout + weak.stderr).trim().split('\n').length, 1);
-  assert.match(weak.stdout + weak.stderr, /32 or more characters/);
-});
+for (const weakToken of ['short-token', ' '.repeat(40)]) {
+  const weak = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', '--port', '0'], { encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: weakToken } });
+  check('API startup rejects a weak token of length ' + weakToken.length, () => {
+    assert.equal(weak.status, 1, 'weak token accepted'); assert.equal((weak.stdout + weak.stderr).trim().split('\n').length, 1);
+    assert.match(weak.stdout + weak.stderr, /32 or more characters/);
+  });
+}
 for (const options of [['--host', '0.0.0.0'], ['--port', '-1'], ['--port', 'NaN'], ['--port', '65536'], ['--host', ''], ['--port', '1', '--port', '2']]) {
   const r = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', ...options], {
     encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: '' },

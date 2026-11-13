@@ -18,7 +18,7 @@ export async function serve(argv) {
   const token = process.env.AGENTIC_ADS_TOKEN || '';
   const loopback = options.host === 'localhost' || options.host === '::1' || (isIP(options.host) === 4 && options.host.startsWith('127.'));
   if (!loopback && !token) throw new Error('Non-loopback host requires AGENTIC_ADS_TOKEN');
-  if (token && token.length < 32) throw new Error('AGENTIC_ADS_TOKEN needs 32 or more characters');
+  if (token && token.trim().length < 32) throw new Error('AGENTIC_ADS_TOKEN needs 32 or more characters');
   let boundPort = 0;
   // Pin localhost to loopback rather than trusting hostname resolution.
   if (options.host === 'localhost') options.host = '127.0.0.1';

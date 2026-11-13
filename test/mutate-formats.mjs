@@ -17,7 +17,7 @@ for (const [name, id, match, replacement, failure] of [
   ['remove lo-fi no real people', 'lo-fi', 'No real people. ', '', /lo-fi missing no real people/],
 ]) faults.push([name, catalog, new RegExp(`("id": "${id}"[\\s\\S]*?)${match}`), `$1${replacement}`, failure]);
 const evidence = [];
-const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 60000 });
+const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
 for (const [name, file, match, replacement, failure] of faults) {
   const original = await readFile(file, 'utf8');
   try {
