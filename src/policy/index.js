@@ -62,6 +62,8 @@ const housingRules = [
   ['targeting_religion', /\b(?:christian|muslim|jewish|hindu|buddhist|catholic|protestant)[ -]+(?:neighbou?rhood|community|building)(?!\s+(?:cent(?:er|re)|hall|school|hospital|museum|library|church|temple|mosque|synagogue))\b/, 'Remove religious neighborhood preferences.'],
   ['targeting_sex', /\b(?:gay|straight)[ -]friendly\b/, 'Remove sex or gender preferences.'],
   ['targeting_area', /\b(?:zip|postal)[ -]+(?:code[ -]+)?\d{1,10}[ -]+only\b|\b(?:target|targeting|exclude|excluding)\s+(?:residents?\s+)?(?:in\s+)?(?:(?:this|that|the|these|specific|selected)\s+)?(?:areas?|neighbou?rhoods?|districts?)\b|\b(?:locals?|area residents?)\s+only\b/, 'Remove postal or area targeting language.'],
+  ['targeting_age', /\bages?[\s-]*\d{1,2}(?:[\s-]*(?:to|[-\u2013])[\s-]*\d{1,2}|\s*\+|\s*plus)(?!\w)/, 'Remove age ranges.'],
+  ['targeting_area', /\b(?:zip|postal)[\s-]*codes?[\s-]+only\b|\b(?:only|just)[\s-]+(?:in[\s-]+)?(?:these[\s-]+|the[\s-]+)?(?:zip|postal)[\s-]*codes?\b|\b(?:zip|postal)[\s-]*codes?[\s-]*(?:targeting|restricted)\b/, 'Remove ZIP-code targeting.'],
 ];
 /** Conservative copy checks, not platform approval or factual verification.
  * @param {string} copy

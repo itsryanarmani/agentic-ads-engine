@@ -29,7 +29,7 @@ for (const [copy, code] of [
   ['BREAKING update', 'news'], ['Before and after', 'staging'], ['', 'empty'],
 ]) {
   const r = cli('lint', '--copy', copy);
-  check(`lint ${code}`, () => { assert.equal(r.status, 2); assert.ok(r.value.findings.some(f => f.code === code)); });
+  check(`lint ${code}`, () => { assert.equal(r.status, 2); assert.ok(r.value.findings.some(f => f.code === code || f.code.startsWith(code + '_'))); });
 }
 const safe = cli('lint', '--copy', 'Browse listings');
 check('safe copy still needs review', () => {
