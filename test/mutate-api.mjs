@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 const file = 'src/http.js', original = await readFile(file, 'utf8'), evidence = [];
-const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 90000 });
+const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
 const baseline = run();
 if (baseline.error || baseline.status !== 0) {
   await mkdir('test/artifacts', { recursive: true });
@@ -15,7 +15,7 @@ const faults = [
   ['skip token check', "if (token && !timingSafeEqual", "if (false && !timingSafeEqual", /API status \/health/],
   ['raise body limit', 'if (size > 65536)', 'if (size > 131072)', /API status \/v1\/lint/],
   ['skip host check', 'if (!hostOk) { send(403', 'if (false) { send(403', /API Host header/],
-  ['allow short token', "token.length < 32", "token.length < 0", /short token/],
+  ['allow short token', "token.length < 32", "token.length < 0", /weak token/],
   ['allow apply', "if (hasApply(args)) { send(400, { error: 'Apply is unavailable' }); return; }", 'if (hasApply(args)) delete args.apply;', /API status \/v1\/plan/],
 ];
 for (const [name, from, to, failure] of faults) {

@@ -206,11 +206,11 @@ POST routes: `/v1/lint` and `/v1/plan`. Their results match the CLI and MCP tool
 Blocked lint findings return HTTP 200 with `status: "blocked"`.
 Plans only produce dry-run results. Any `apply` field is refused, including nested fields and query parameters.
 JSON bodies have a 64 KiB limit. Requests have a ten-second timeout.
-Errors return JSON without stacks: 400 invalid input, 401 unauthorized, 404 missing route or item,
+Errors return JSON without stacks: 400 invalid input, 401 unauthorized, 403 forbidden host, 404 missing route or item,
 405 wrong method, 408 timeout, 413 oversized body, and 415 unsupported media type.
 
 Set `AGENTIC_ADS_TOKEN` to require `Authorization: Bearer <token>` on every route, including health.
-The token needs 32 or more characters. Without a token, the server accepts only loopback `Host` values with its own port. This blocks DNS rebinding from a web page.
+The token needs 32 or more characters and must not start or end with spaces. Without a token, the server accepts only loopback `Host` values with its own port. This blocks DNS rebinding from a web page.
 A non-loopback host requires this setting. The server never logs bodies or tokens.
 Responses containing the configured token are refused. Use TLS through your admin site's server for remote access.
 
@@ -220,5 +220,5 @@ Proxy calls through that backend for browser clients. CORS headers are absent by
 Unauthenticated browser preflight requests still return 401 when a token is set.
 Direct cross-origin browser calls with bearer headers therefore require the backend proxy.
 
-Run `node test/mutate-api.mjs` to prove authentication, body limits, and apply checks detect deliberate faults.
+Run `node test/mutate-api.mjs` to prove authentication, the Host check, the token length rule, body limits, and apply checks detect deliberate faults.
 The script restores the source and writes `test/artifacts/api-mutations.json`.

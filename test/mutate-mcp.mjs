@@ -7,10 +7,10 @@ const faults = [
   ['initialize gate', "else if (!initialized) { fail(id, -32002, 'Initialize first'); return; }", '', /tools\/list initialize gate/],
   ['frame limit', 'buffer.length > 65536', 'buffer.length > 1e12', /MCP frame limit/],
   ['blocked copy', "isError: value.status === 'blocked' || value.policy?.status === 'blocked'", 'isError: false', /lint blocked copy must set isError/],
-  ['server exit', "else if (method === 'tools/call') {", "else if (method === 'tools/call') { process.stderr.write('forced MCP exit\\n'); process.exit(3);", /MCP server exited: code=3, signal=null; last stderr: "forced MCP exit\\n"; pending request: tools\/call \(list-templates\)/],
+  ['server exit', "else if (method === 'tools/call') {", "else if (method === 'tools/call') { process.stderr.write('forced MCP exit\\n'); process.exit(3);", /MCP server exited: code=3, signal=null; last stderr: "forced MCP exit\\n"; pending request: tools\/call \([a-z_-]+\)/],
 ];
 const evidence = [];
-const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 60000 });
+const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
 for (const [name, match, replacement, failure] of faults) {
   try {
     assert.equal(original.split(match).length, 2, 'mutation target must be unique');

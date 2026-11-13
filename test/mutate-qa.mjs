@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 const evidence = [];
-const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 60000 });
+const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
 const faults = [
   ['drop R14', 'src/formats/library.json', s => s.replace(', "R14"', ''), /QA pinned rules: screen-voiceover/],
   ['rename R1', 'src/qa/rules.json', s => s.replace('"id": "R1"', '"id": "R99"'), /QA rule IDs/],

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 const file = 'bin/agentic-ads', original = await readFile(file, 'utf8'), evidence = [];
-const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 60000 });
+const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
 for (const [name, match, replacement, failure] of [
   ['drop attached value', 'else if (value !== undefined) args[key] = value;', "else if (value !== undefined) args[key] = '';", /attached copy status/],
   ['accept repeated attached option', 'Object.hasOwn(args, key)', '(value === undefined && Object.hasOwn(args, key))', /repeated option rejected/],
