@@ -32,23 +32,25 @@ const gap = '[\\s-]+';
 const spaced = pattern => pattern.replaceAll(' ', gap);
 const people = spaced('(?:(?:tenants?|residents?|applicants?|people|persons?|households?|roommates?|family|families|professionals?|with|or|and|pets|grad|job|on|are|is) ){0,4}');
 const modifier = spaced('(?:(?:a|an) )?(?:(?:young|single|mature|professional|traditional|able bodied) )?');
-const cueBefore = spaced('(?:only|no|not|not for|wanted|prefer|preferred|ideal for|great for|perfect for|must be|must have|must speak|exclude|excluding|not suitable for)');
+const cueBefore = spaced('(?:only|no|not|not for|wanted|prefer|prefers|seeking|seeks|preferred|ideal for|great for|perfect for|must be|must have|must speak|exclude|excluding|not suitable for)');
 const cueAfter = spaced('(?:only|preferred|wanted|required|excluded|exclusive|need not apply|not welcome|not accepted|not allowed|not permitted|prohibited|banned)');
-function preference(subject, welcome = true) {
+function preference(subject, welcomeSignals = false) {
   const group = spaced(subject);
-  const after = welcome ? '(?:' + cueAfter + '|welcome)' : cueAfter;
+  // 'X welcome' is inclusive for income, family, age, marital status and disability. For religion,
+  // race, origin and sex it signals a preference, so those rules pass welcomeSignals = true.
+  const after = welcomeSignals ? '(?:' + cueAfter + '|welcome)' : cueAfter;
   return new RegExp('\\b(?:' + cueBefore + gap + people + modifier + '(?:' + group + ')|(?:' + group + ')' + gap + people + after + ')\\b');
 }
 const housingRules = [
   ['targeting_age', preference('young(?: professionals?| adults?)?|seniors?|retirees?|millennials?|students?|mature|elderly|teens?|teenagers?|toddlers?|babies|infants?'), 'Remove age or student restrictions and preferences.'],
-  ['targeting_familial_status', preference('children|child|kids|kiddos|family|families|parents?|mothers?|fathers?|pregnant', false), 'Remove family-status restrictions and preferences.'],
+  ['targeting_familial_status', preference('children|child|kids|kiddos|family|families|parents?|mothers?|fathers?|pregnant'), 'Remove family-status restrictions and preferences.'],
   ['targeting_familial_status', preference('adults?|empty nesters'), 'Remove family-status restrictions and preferences.'],
   ['targeting_marital_status', preference('singles?|bachelors?|couples?|married|unmarried|divorced'), 'Remove marital-status restrictions and preferences.'],
-  ['targeting_religion', preference('christians?|muslims?|jewish|jews?|hindus?|buddhists?|catholics?|protestants?|believers|religious'), 'Remove religious targeting or preferences.'],
+  ['targeting_religion', preference('christians?|muslims?|jewish|jews?|hindus?|buddhists?|catholics?|protestants?|believers|religious', true), 'Remove religious targeting or preferences.'],
   ['targeting_income', preference('section (?:8|eight)|vouchers?|hud|housing assistance|public assistance|income source|job income|welfare|ssi|ssdi|disability income|social security'), 'Remove source-of-income restrictions or preferences.'],
-  ['targeting_sex', preference('men|women|males?|females?|boys?|girls?|gentlemen|ladies|sex|gender|gay|straight'), 'Remove sex or gender restrictions and preferences.'],
-  ['targeting_origin', preference('americans?|canadians?|chinese|indians?|mexicans?|british|french|arabs?|hispanics?|latinos?|latinas?|africans?|asians?|(?:us )?citizens?|native speakers?|english(?: speakers?)?|immigrants?|foreigners?|national origin|ethnicity|race|whites?|blacks?|minorities'), 'Remove race or national-origin restrictions and preferences.'],
-  ['targeting_disability', preference('disabled|disability|disabilities|mentally ill|wheelchairs?(?: users?)?|service animals?|able bodied|non disabled|wheelchair accessible', false), 'Remove disability restrictions and preferences.'],
+  ['targeting_sex', preference('men|women|males?|females?|boys?|girls?|gentlemen|ladies|sex|gender|gay|straight', true), 'Remove sex or gender restrictions and preferences.'],
+  ['targeting_origin', preference('americans?|canadians?|chinese|indians?|mexicans?|british|french|arabs?|hispanics?|latinos?|latinas?|africans?|asians?|(?:us )?citizens?|native speakers?|english(?: speakers?)?|immigrants?|foreigners?|national origin|ethnicity|race|whites?|blacks?|minorities', true), 'Remove race or national-origin restrictions and preferences.'],
+  ['targeting_disability', preference('disabled|handicapped|deaf|blind|disability|disabilities|mentally ill|wheelchairs?(?: users?)?|service animals?|able bodied|non disabled|wheelchair accessible'), 'Remove disability restrictions and preferences.'],
   // Indirect occupancy language needs review even without an explicit restriction.
   ['targeting_familial_status', /\b(?:traditional[\s-]+family[\s-]+values[\s-]+neighbou?rhood|adult[\s-]+community|only[\s-]+one[\s-]+child)\b/, 'Review possible family-status or occupancy preferences.', 'warning'],
   ['targeting_religion', /\b(?:christian|muslim|jewish|hindu|buddhist|catholic|protestant)[\s-]+home\b/, 'Review possible religious occupancy preferences.', 'warning'],
@@ -81,7 +83,7 @@ export function lint(copy, options = {}) {
   const rules = [
     ...(housing ? housingRules : []),
     ['deceptive', /\b(guarantee\w*|risk[ -]?free|zero risk|no risk|double your money|instant profit)\b/, 'Remove promises of certain outcomes.'],
-    ['superlative', /\b(best(?![ -]street\b)|top(?![ -](?:floor\b|\d+\b))|largest|fastest|cheapest|unbeatable|number one)\b|#\s*1\b/, 'Remove banned superlatives.'],
+    ['superlative', /\b(best(?![ -]street\b)|top(?![ -](?:floor\b|\d+\b|rated\b|notch\b|tier\b))|largest|fastest|cheapest|unbeatable|number one)\b|#\s*1\b/, 'Remove banned superlatives.'],
     ['below_market', /\b(?:below|under|off|less[ -]+than|cheaper[ -]+than|discount(?:ed)?[ -]+(?:from|against|to))[ -]+(?:(?:the|current|local|fair|estimated|average|prevailing|open)[ -]+){0,5}(?:market|appraisal|appraised[ -]+value|comps)\b|\bmarket\s+(?:value|rates?|prices?)\s+(?:minus|less|discount)/, 'A below-market claim needs independent evidence and review.'],
     ['urgency', /\b(only today|ending soon|limited time|act now|last chance|only \d+ left)\b/, 'Verify scarcity and timing before use.'],
     ['news', /\b(breaking(?![ -]down\b)|news alert)\b/, 'News framing needs review and a clear ad disclosure.'],
