@@ -149,6 +149,64 @@ check('five templates and both ratios', () => {
   for (const t of templates.value) assert.deepEqual(t.aspectRatios, ['4:5', '9:16']);
 });
 const hooks = cli('list-hooks');
+const hookCases = [['list_hooks', {}, hooks.value]];
+const hookExpected = JSON.parse(await readFile('test/hook-expectations.json', 'utf8'));
+check('hook catalog schema and references', () => {
+  assert.deepEqual(cli('hooks'), hooks);
+  assert.ok(hooks.value.length >= 40, 'at least 40 hooks');
+  assert.equal(new Set(hooks.value.map(h => h.id)).size, hooks.value.length, 'duplicate hook ID');
+  for (const h of hooks.value) {
+    for (const key of ['id', 'pattern', 'note']) assert.ok(typeof h[key] === 'string' && h[key].trim());
+    assert.match(h.id, /^[a-z][a-z0-9-]*$/); assert.ok(!h.note.includes('\n'));
+    assert.ok(h.tags.length && h.tags.every(t => typeof t === 'string' && t.trim()));
+    assert.ok(h.formats.length && h.formats.every(id => formats.value.some(f => f.id === id)), 'unknown hook format');
+    assert.ok(['spoken line', 'first-frame visual', 'caption', 'sound'].includes(h.kind));
+    assert.ok(['shock', 'fear', 'curiosity', 'relief', 'humor', 'pride'].includes(h.emotion));
+    assert.ok(['low', 'medium', 'high'].includes(h.risk)); assert.equal(typeof h.housingSafe, 'boolean');
+    assert.match(h.pattern, /{{subject}}/);
+  }
+});
+for (const h of hooks.value) {
+  check('hook show ' + h.id, () => assert.deepEqual(cli('hooks', 'show', h.id), { status: 0, value: h }));
+  hookCases.push(['get_hook', { id: h.id }, h]);
+  if (h.housingSafe) check('housing-safe lint ' + h.id, () => {
+    const filled = h.pattern.replace(/{{[a-z_]+}}/g, 'available listings');
+    const result = cli('lint', '--copy', filled, '--category', 'housing');
+    assert.equal(result.status, 0, 'housing-safe hook fails lint: ' + h.id);
+    assert.deepEqual(result.value.findings.map(f => f.code), ['human_review']);
+  });
+}
+check('hook safety flags pinned', () => {
+  assert.deepEqual(hooks.value.map(({ id, housingSafe }) => ({ id, housingSafe })), hookExpected, 'hook safety flags pinned');
+});
+check('owner hook beats retained', () => {
+  for (const [id, text] of [['shocked-face', /shocked face.*next.*cause/], ['all-savings', /I spent all my savings on this house/],
+    ['slick-agent', /slick agent.*broke my trust/], ['someone-lives-there', /someone lives there/],
+    ['scare-beat', /suspense hit/], ['street-interview', /Street interview/]]) {
+    assert.match(hooks.value.find(h => h.id === id)?.pattern ?? '', text);
+  }
+});
+for (const f of formats.value) for (const emotion of [undefined, 'shock', 'fear', 'curiosity', 'relief', 'humor', 'pride']) {
+  for (const housing of [false, true]) {
+    const args = { format: f.id, ...(emotion ? { emotion } : {}), housing };
+    const flags = ['--format', f.id, ...(emotion ? ['--emotion', emotion] : []), '--housing=' + housing];
+    const picked = cli('hooks', 'pick', ...flags);
+    check('hook filters ' + JSON.stringify(args), () => {
+      assert.equal(picked.status, 0);
+      assert.deepEqual(picked.value, hooks.value.filter(h => h.formats.includes(f.id) &&
+        (!emotion || h.emotion === emotion) && (!housing || h.housingSafe)));
+      assert.deepEqual(cli('hooks', ...flags), picked);
+    });
+    hookCases.push(['pick_hooks', args, picked.value], ['list_hooks', args, picked.value]);
+  }
+}
+const hookErrors = [
+  ['get_hook', {}, ['hooks', 'show']], ['get_hook', { id: 'missing' }, ['hooks', 'show', 'missing']],
+  ['pick_hooks', {}, ['hooks', 'pick']], ['pick_hooks', { format: 'missing' }, ['hooks', 'pick', '--format', 'missing']],
+  ['pick_hooks', { format: 'pov', emotion: 'bad' }, ['hooks', 'pick', '--format', 'pov', '--emotion', 'bad']],
+];
+for (const [, , argv] of hookErrors) check('hook rejects ' + argv.join(' '), () => assert.equal(cli(...argv).status, 1));
+
 check('hook metadata', () => {
   assert.equal(hooks.status, 0);
   for (const h of hooks.value) assert.ok(h.pattern && h.tags.length && h.risk);
@@ -248,6 +306,21 @@ const result = planFormat(input); result.stages[0].provider.model = 'mutated';
 assert.deepEqual(listFormats(), before); assert.notDeepEqual(planFormat(input), result);
 assert.throws(() => planFormat({ ...input, apply: true }));
 assert.throws(() => planFormat({ ...input, dryRun: false }));
+const { pickHooks, listHooks, getHook, hooks: catalog } = await import('./src/index.js');
+const filter = { format: 'pov', emotion: 'curiosity', housing: true };
+const ranked = pickHooks(filter, { 'look-again': 9, 'slick-agent': 99 });
+assert.equal(ranked[0].id, 'look-again');
+assert.equal(selectFor({ id: 'demo', scores: { 'look-again': 9, help: 99 } }, 'discovery', filter).id, 'look-again');
+assert.equal(selectFor({ id: 'demo' }, 'missing', filter), null);
+assert.deepEqual(pickHooks({ format: 'screen-voiceover', emotion: 'shock' }), []);
+assert.equal(selectFor({ id: 'demo' }, 'discovery', { format: 'screen-voiceover', emotion: 'shock' }), null);
+assert.deepEqual(pickHooks(filter), listHooks(filter));
+ranked[0].formats.length = 0; getHook('door').tags.length = 0;
+assert.ok(pickHooks(filter).every(h => h.formats.includes('pov')));
+assert.ok(getHook('door').tags.length); assert.ok(Object.isFrozen(catalog[0].formats));
+for (const bad of [null, [], { format: 'missing' }, { emotion: 'bad' }, { housing: 'true' }, { wat: true }]) assert.throws(() => listHooks(bad));
+assert.throws(() => pickHooks(filter, { door: -1 }));
+assert.throws(() => pickHooks(filter, { missing: 1 }));
 const dir = await mkdtemp(join(tmpdir(), 'aae-'));
 try {
   assert.deepEqual(await readScores(dir, 'demo'), {});
@@ -321,9 +394,15 @@ try {
   check('MCP initialize', () => assert.equal(init.result.protocolVersion, '2024-11-05'));
   server.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
   const list = await request('tools/list');
-  check('MCP nine tools', () => assert.equal(list.result.tools.length, 9));
+  check('MCP twelve tools', () => assert.equal(list.result.tools.length, 12));
+  for (const [name, args, argv] of hookErrors) {
+    const r = await request('tools/call', { name, arguments: args });
+    check('MCP hook error ' + JSON.stringify(args) + name, () => {
+      assert.equal(r.result.isError, true); assert.equal(r.result.content[0].text, cli(...argv).value.error);
+    });
+  }
   for (const [name, args, expected] of [['list-templates', {}, templates.value], ['list-hooks', {}, hooks.value],
-    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...qaCases, ...formatCases, ...attachedLintCases]) {
+    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...hookCases, ...qaCases, ...formatCases, ...attachedLintCases]) {
     const response = await request('tools/call', { name, arguments: args });
     check('MCP parity ' + name, () => assert.deepEqual(JSON.parse(response.result.content[0].text), expected));
   }

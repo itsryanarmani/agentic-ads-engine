@@ -3,6 +3,11 @@ import { execute, tools } from '../src/index.js';
 try {
   let [action, ...argv] = process.argv.slice(2);
   const args = {};
+  if (action === 'hooks') {
+    action = argv[0] === 'show' ? 'get_hook' : argv[0] === 'pick' ? 'pick_hooks' : 'list_hooks';
+    if (action === 'get_hook') { argv.shift(); args.id = argv.shift(); }
+    if (action === 'pick_hooks') argv.shift();
+  }
   if (action === 'qa-rules') {
     action = argv[0] === 'show' ? 'get_qa_rule' : 'list_qa_rules';
     if (action === 'get_qa_rule') { argv.shift(); args.id = argv.shift(); }
@@ -13,7 +18,7 @@ try {
   }
   if (action === 'plan' && argv.some(arg => arg === '--format' || arg.startsWith('--format='))) action = 'plan_format';
   const schema = tools.find(t => t.name === action)?.inputSchema;
-  if (!schema) throw new Error('Use qa-rules, formats, list-templates, list-hooks, lint, or plan');
+  if (!schema) throw new Error('Use hooks, qa-rules, formats, list-templates, list-hooks, lint, or plan');
   while (argv.length) {
     const option = argv.shift(), separator = option.indexOf('=');
     const flag = separator < 0 ? option : option.slice(0, separator);
