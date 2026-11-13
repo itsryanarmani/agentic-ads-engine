@@ -22,6 +22,7 @@ function cli(...args) {
 const formats = cli('formats');
 const qa = cli('qa-rules');
 const qaExpected = JSON.parse(await readFile('test/qa-expectations.json', 'utf8'));
+const gatesText = JSON.parse(await readFile('src/qa/gates.json', 'utf8'));
 const pinnedQa = JSON.parse(await readFile('test/qa-rules-expected.json', 'utf8'));
 const costExpected = [
   'Set a hard cap before you spend. One writer per spend log.',
@@ -73,9 +74,17 @@ check('QA unknown ID', () => {
   assert.equal(cli('qa-rules', 'show').status, 1);
 });
 const stageIds = 'script set character still angle_still image_to_video talking_head tts sfx laugh_track captions edit end_card mute_test qa'.split(' ');
-const gateIds = 'continuity mouth_sync caption_timing dead_air tail shot_length words_per_second mute_test orientation black_corners eyes'.split(' ');
+const audioGateIds = 'loudness_master caption_ocr voice_consistency stem_sfx'.split(' ');
+const gateDefinitions = JSON.parse(await readFile('src/qa/gates.json', 'utf8'));
+const reworks = {
+  'street-interview': { still: 0.124, talking_head: 0.75 },
+  'backrooms-dialogue': { angle_still: 0.056, talking_head: 0.45 },
+  'horror-comic': { angle_still: 0.028, image_to_video: 0.1 },
+};
+const gateIds = 'continuity mouth_sync caption_timing dead_air tail shot_length words_per_second mute_test orientation black_corners eyes'.split(' ').concat(audioGateIds);
 check('format descriptors and unique IDs', () => {
-  assert.equal(formats.status, 0); assert.ok(formats.value.length >= 12);
+  assert.equal(formats.status, 0); assert.equal(formats.value.length, 15);
+  assert.deepEqual(Object.keys(gateDefinitions).sort(), [...gateIds].sort());
   assert.equal(new Set(formats.value.map(f => f.id)).size, formats.value.length, 'duplicate format ID');
   for (const f of formats.value) {
     for (const key of ['id', 'name', 'description', 'hookPattern']) assert.ok(typeof f[key] === 'string' && f[key].trim());
@@ -83,7 +92,10 @@ check('format descriptors and unique IDs', () => {
     assert.ok(f.durationSeconds.min > 0 && f.durationSeconds.max >= f.durationSeconds.min);
     assert.ok(f.stages.length && f.stages.every(s => stageIds.includes(s)));
     assert.equal(new Set(f.stages).size, f.stages.length);
-    assert.ok(f.qaGates.length > 0, 'missing QA gates'); assert.ok(f.qaGates.every(g => gateIds.includes(g)));
+    assert.ok(f.qaGates.length > 0, 'missing QA gates'); assert.ok(f.qaGates.every(g => gateIds.includes(g)), `${f.id} unknown QA gate`);
+    if (f.stages.includes('captions') && f.stages.some(s => ['tts', 'talking_head'].includes(s))) {
+      for (const gate of audioGateIds) assert.ok(f.qaGates.includes(gate), `${f.id} missing ${gate}`);
+    }
     assert.ok(f.learned.length && f.sources.length && f.riskNotes.some(n => /housing special ad category/.test(n)));
     assert.ok(f.riskNotes.some(n => /No fake testimonials/.test(n)));
     assert.ok(['free', 'cheap', 'mid', 'expensive'].includes(f.costClass)); assert.ok(['low', 'medium', 'high'].includes(f.policyRisk));
@@ -107,12 +119,47 @@ check('pinned format contracts', () => {
 });
 check('logged endpoint prices', () => {
   for (const f of formats.value) for (const [stage, p] of Object.entries(f.providers)) {
-    const expected = { still: [0.02, 0.06], angle_still: [0.056, 0.196], tts: [0.03, f.id === 'lo-fi' ? 0.08 : 0.055], image_to_video: [0.15, 0.3], talking_head: [1.5, 1.8] }[stage];
+    const rework = reworks[f.id];
+    const expected = rework ? [rework[stage] ?? 0, rework[stage] ?? 0] : { still: [0.02, 0.06], angle_still: [0.056, 0.196], tts: [0.03, f.id === 'lo-fi' ? 0.08 : 0.055], image_to_video: [0.15, 0.3], talking_head: [1.5, 1.8] }[stage];
+    if (rework) assert.deepEqual([p.estimatedCostUsd.low, p.estimatedCostUsd.high], expected, `${f.id} ${stage} rework cost`);
     if (!p.estimatedCostUsd.high) { assert.equal(p.unverified, true); continue; }
     assert.deepEqual([p.estimatedCostUsd.low, p.estimatedCostUsd.high], f.id === 'text-broll' ? [0, 0.02] : expected);
     const model = { still: 'bytedance/seedream-v5.5', angle_still: 'bytedance/seedream-v5.5/edit', tts: 'wavespeed-ai/qwen3-tts/' + (f.id === 'lo-fi' ? 'voice-design' : 'text-to-speech'), image_to_video: 'wavespeed-ai/wan-2.2/i2v-480p-ultra-fast', talking_head: 'wavespeed-ai/wan-2.2/speech-to-video' }[stage];
-    assert.equal(p.model, model); assert.match(p.estimatedCostUsd.note, /spend.json/);
+    assert.equal(p.model, model); assert.match(p.estimatedCostUsd.note, rework ? /COST_TABLE.md rounds 5 to 7/ : /spend.json/);
   }
+});
+check('new styles retain evidence and required rules', () => {
+  const cases = [
+    ['street-interview', ['R21', 'R22', 'R24'], ['host', 'guest', 'handheld mic', '2010s phone'], 0.874],
+    ['backrooms-dialogue', ['R21', 'R22'], ['Two characters', 'endless yellow corridors', '1980s VHS', '1990s camcorder', '2010s street'], 0.506],
+    ['horror-comic', ['R25'], ['behind a door', 'sting', 'reacts', 'comedy'], 0.128],
+  ];
+  for (const [id, rules, terms, cost] of cases) {
+    const f = formats.value.find(f => f.id === id);
+    assert.ok(f, id);
+    for (const rule of rules) assert.ok(f.feedbackRules.includes(rule), `${id} ${rule}`);
+    for (const term of terms) assert.ok(f.description.includes(term), `${id} ${term}`);
+    assert.equal(f.estimatedCostUsd.low, cost); assert.equal(f.estimatedCostUsd.high, cost);
+    assert.match(f.estimatedCostUsd.note, /upper bound.*COST_TABLE/);
+    for (const term of ['Lip sync', 'Voice drift', 'Jumbled captions', 'Door-break artifacts', 'SFX louder than voice', '$0 to $0.13', '$0.15']) {
+      assert.ok(f.learned.join(' ').includes(term), `${id} missing lesson: ${term}`);
+    }
+    assert.ok(f.sources.includes('COST_TABLE.md'));
+  }
+  for (const id of ['R24', 'R25']) assert.ok(formats.value.some(f => f.feedbackRules.includes(id)));
+  const byId = id => formats.value.find(f => f.id === id).feedbackRules;
+  for (const id of ['R13', 'R21', 'R22']) assert.ok(!byId('horror-comic').includes(id), `horror-comic has one character: no ${id}`);
+  assert.ok(!byId('backrooms-dialogue').includes('R25'), 'backrooms-dialogue plans no scare: R25 belongs to horror-comic');
+  for (const id of ['street-interview', 'backrooms-dialogue', 'horror-comic']) assert.equal(formats.value.find(f => f.id === id).durationSeconds.min, 16, `${id} minimum length follows the measured videos`);
+  assert.match(gatesText.voice_consistency, /provisional/, 'voice gate stays a provisional proxy');
+});
+check('audio gate instructions preserve limits', () => {
+  for (const [id, terms] of Object.entries({
+    loudness_master: ['final file', '-14 LUFS', '-16 to -12 LUFS', '-1 dBTP'],
+    caption_ocr: ['final file', '0.10', 'each caption'],
+    voice_consistency: ['per character', '1.25', '1.6', 'OWNER CHECK', 'NOT CHECKED'],
+    stem_sfx: ['separate voice and SFX stems', 'mixed track cannot', 'NOT CHECKED', '0.2 s'],
+  })) for (const term of terms) assert.ok(gateDefinitions[id].includes(term), `${id}: ${term}`);
 });
 check('sitcom and lo-fi lessons survive', () => {
   const sitcom = formats.value.find(f => f.id === 'sitcom'), lofi = formats.value.find(f => f.id === 'lo-fi');
@@ -139,6 +186,7 @@ for (const f of formats.value) {
     assert.equal(shown.status, 0); assert.deepEqual(shown.value, f); assert.equal(planned.status, 0);
     const p = planned.value; assert.equal(p.dryRun, true); assert.equal(p.applied, false); assert.equal(p.spendUsd, 0);
     assert.deepEqual(p.stages.map(s => s.id), f.stages); assert.deepEqual(p.qaGates, f.qaGates);
+    assert.deepEqual(p.gateChecklist, f.qaGates.map(id => ({ id, check: gateDefinitions[id], status: 'NOT CHECKED' })));
     assert.equal(p.policyRisk, f.policyRisk); assert.deepEqual(p.riskNotes, f.riskNotes);
     assert.deepEqual(p.total, f.estimatedCostUsd);
     assert.deepEqual(p.reviewChecklist, f.feedbackRules.map(id => {
@@ -623,7 +671,7 @@ try {
   check('npm pack contents', () => {
     assert.equal(packed.status, 0, packed.stderr);
     const files = Object.values(JSON.parse(packed.stdout))[0].files.map(f => f.path);
-    for (const file of ['LICENSE', 'README.md', 'bin/agentic-ads', 'bin/agentic-ads-mcp', 'src/hooks/library.json', 'src/formats/index.js', 'src/formats/library.json', 'src/qa/index.js', 'src/qa/rules.json']) assert.ok(files.includes(file));
+    for (const file of ['LICENSE', 'README.md', 'bin/agentic-ads', 'bin/agentic-ads-mcp', 'src/hooks/library.json', 'src/formats/index.js', 'src/formats/library.json', 'src/qa/index.js', 'src/qa/rules.json', 'src/qa/gates.json']) assert.ok(files.includes(file));
     assert.ok(files.every(f => !f.startsWith('test/')));
   });
   const linked = join(packDir, 'agentic-ads');

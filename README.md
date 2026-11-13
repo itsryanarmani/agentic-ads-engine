@@ -116,7 +116,7 @@ node bin/agentic-ads formats show sitcom
 node bin/agentic-ads plan --format sitcom --site demo
 ```
 
-Twelve formats cover the eight catalog recipes, lo-fi UGC, sitcom, storytime, and talking objects.
+Fifteen formats cover the eight catalog recipes, lo-fi UGC, sitcom, storytime, talking objects, street interviews, Backrooms dialogue, and horror comedy.
 MCP adds `list_formats({costClass?, risk?})`, `get_format({id})`, and `plan_format({format, site, goal?, dryRun?})`.
 These tools return the same JSON as the commands above.
 The library exports `listFormats`, `getFormat`, and `planFormat` from the package root and `agentic-ads-engine/formats`.
@@ -133,8 +133,28 @@ Lo-fi costs reference reused assets: $0.881 for three videos6 ads and $0.165 for
 Fresh generation estimates differ. The style catalog did not render its recommended local recipes.
 No paid calls, current price checks, media QA, or platform approval occur here.
 
-Run `node test/mutate-formats.mjs` to repeat the three deliberate faults and restore the files.
-It records failures and the restored pass in `test/artifacts/formats-mutations.json`.
+Run `node test/mutate-formats.mjs` to repeat the twelve deliberate faults and restore the files.
+It records detected faults and the restored run result in `test/artifacts/formats-mutations.json`.
+
+### Audio and caption gates
+
+Plans include `gateChecklist` instructions from `src/qa/gates.json`. Each entry starts as `NOT CHECKED`.
+All formats with captions and speech require these four gates:
+
+| Gate | Required check |
+| --- | --- |
+| `loudness_master` | Final file: target -14 LUFS, band -16 to -12 LUFS, true peak at or below -1 dBTP. |
+| `caption_ocr` | Final-file OCR character error rate: 0.10 or less for every caption. |
+| `voice_consistency` | Per-character pitch spread: at most 1.25 passes; above 1.25 through 1.6 needs owner review; above 1.6 fails. |
+| `stem_sfx` | Measure sync and level using separate voice and SFX stems. A mixed track cannot measure these separately. |
+
+Missing stems or voice mappings leave dependent checks `NOT CHECKED`. Pitch measures consistency; voice fit still needs a listener.
+
+The new estimates describe logged reworks with reused assets. They are upper bounds, not current prices or fresh-production quotes.
+Street interview uses the $0.874 phone-style rework. Backrooms uses the $0.506 VHS rework as its stage plan.
+Its notes also record the $0.128 camcorder and $0.874 street variants. Horror comedy uses the $0.128 scare addition.
+The historical VHS rework has no scare; R25 applies when adding a scare variant.
+Reusing stills, clips and voices costs $0 to $0.13. A new talking clip costs about $0.15; lip sync remains weak.
 
 ### Owner feedback checks
 
@@ -149,8 +169,9 @@ A reviewer must record PASS or FAIL with a measured value. Voice and sound fit n
 The JavaScript API exports `listRules()`, `getRule(id)`, and `checklistFor(format)`.
 Pass a format descriptor from `getFormat(id)` to `checklistFor`.
 Rules use `blocking` severity. `applies` names format kinds; `all` covers every format.
-Story formats include stickman, POV, before-after, lo-fi, sitcom, and storytime.
-Sitcom has dialogue. Talking-object has visible speech. All current formats have captions.
+Story formats include stickman, POV, before-after, lo-fi, sitcom, storytime, and the three new formats.
+Sitcom, street-interview and backrooms-dialogue have dialogue. Horror-comic has one character with speech. Street interviews use R24; horror-comic uses R25, and a Backrooms scare variant is planned as horror-comic.
+Talking-object has visible speech. All 15 formats have captions and TTS. Existing R1–R26 text and its pin remain unchanged.
 
 Run `node test/mutate-qa.mjs` to verify three deliberate faults and restore the files.
 Results go to `test/artifacts/qa-mutations.json` and `test/artifacts/e2e.json`.

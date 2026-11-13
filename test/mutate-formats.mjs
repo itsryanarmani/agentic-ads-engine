@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 const catalog = 'src/formats/library.json', planner = 'src/formats/index.js';
 const faults = [
   ['missing QA gates', catalog, /"qaGates": \[[^\n]+\]/, '"qaGates": []', /missing QA gates/],
+  ['horror-comic gains the dialogue kind', catalog, '"character", "speech", "horror"]', '"character", "dialogue", "horror"]', /QA|required|strictly deep-equal/],
   ['duplicate format ID', catalog, '"id": "text-broll"', '"id": "screen-voiceover"', /duplicate format ID|strictly deep-equal/],
   ['plan applies', planner, 'dryRun: true, applied: false', 'dryRun: false, applied: true', /false !== true/],
 ];
@@ -15,6 +16,9 @@ for (const [name, id, match, replacement, failure] of [
   ['sitcom medium to low', 'sitcom', '"policyRisk": "medium"', '"policyRisk": "low"', /sitcom policyRisk/],
   ['remove storytime DRAMATIZATION', 'storytime', 'DRAMATIZATION', 'FICTION', /storytime missing dramatization/],
   ['remove lo-fi no real people', 'lo-fi', 'No real people. ', '', /lo-fi missing no real people/],
+  ['drop speech loudness_master', 'screen-voiceover', ', "loudness_master"', '', /screen-voiceover.*loudness_master|screen-voiceover qaGates/],
+  ['drop horror-comic R25', 'horror-comic', ', "R25"', '', /QA pinned rules: horror-comic/],
+  ['unknown QA gate', 'street-interview', '"loudness_master"', '"unknown_gate"', /unknown QA gate/],
 ]) faults.push([name, catalog, new RegExp(`("id": "${id}"[\\s\\S]*?)${match}`), `$1${replacement}`, failure]);
 const evidence = [];
 const run = () => spawnSync(process.execPath, ['test/e2e.mjs'], { encoding: 'utf8', timeout: 180000 });
@@ -29,8 +33,11 @@ for (const [name, file, match, replacement, failure] of faults) {
     console.log(`EXPECTED FAIL: ${name} (exit ${r.status})`);
   } finally { await writeFile(file, original); assert.equal(await readFile(file, 'utf8'), original); console.log(`RESTORED: ${name}`); }
 }
-const restored = run(); assert.ifError(restored.error); assert.equal(restored.status, 0, restored.stderr);
+const restored = run();
 await mkdir('test/artifacts', { recursive: true });
-await writeFile('test/artifacts/formats-mutations.json', JSON.stringify({ command: 'node test/mutate-formats.mjs', node: process.version, evidence, restored: restored.stdout.trim() }, null, 2) + '\n');
+await writeFile('test/artifacts/formats-mutations.json', JSON.stringify({ command: 'node test/mutate-formats.mjs', node: process.version, evidence,
+  restored: restored.stdout.trim(), restoredExitCode: restored.status, restoredError: restored.error?.message ?? restored.stderr }, null, 2) + '\n');
+console.log(`Detected ${evidence.length}/${faults.length} mutations; evidence: test/artifacts/formats-mutations.json`);
+assert.ifError(restored.error); assert.equal(restored.status, 0, restored.stderr);
 console.log(restored.stdout.trim());
 console.log('Mutation evidence: test/artifacts/formats-mutations.json');
