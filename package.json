@@ -1,6 +1,6 @@
 {
   "name": "agentic-ads-engine",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Offline ad templates, hook selection, policy lint, and planning tools",
   "type": "module",
   "engines": { "node": ">=20" },

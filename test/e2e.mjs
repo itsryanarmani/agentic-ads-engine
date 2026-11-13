@@ -401,6 +401,8 @@ try {
   }
   const init = await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
   check('MCP initialize', () => assert.equal(init.result.protocolVersion, '2024-11-05'));
+  const pkgVersion = JSON.parse(await readFile('package.json', 'utf8')).version;
+  check('MCP server version matches package.json', () => assert.equal(init.result.serverInfo.version, pkgVersion));
   server.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
   const list = await request('tools/list');
   check('MCP twelve tools', () => assert.equal(list.result.tools.length, 12));
