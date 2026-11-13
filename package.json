@@ -1,0 +1,11 @@
+{
+  "name": "agentic-ads-engine",
+  "version": "0.1.0",
+  "description": "Offline ad templates, hook selection, policy lint, and planning tools",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "exports": { ".": "./src/index.js", "./templates": "./src/templates/index.js", "./hooks": "./src/hooks/index.js", "./policy": "./src/policy/index.js", "./providers": "./src/providers/index.js" },
+  "files": ["src/", "LICENSE"],
+  "publishConfig": { "access": "public" }
+}
