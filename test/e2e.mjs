@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdir, writeFile, readFile, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -6,6 +7,12 @@ import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 await rm('test/artifacts/e2e.json', { force: true });
 const checks = [];
+process.on('uncaughtExceptionMonitor', () => {
+  mkdirSync('test/artifacts', { recursive: true });
+  writeFileSync('test/artifacts/e2e.json', JSON.stringify({ command: 'node test/e2e.mjs', node: process.version,
+    completed: false, passed: checks.length, checks }, null, 2) + '\n');
+  console.error(`FAIL after ${checks.length} checks; test/artifacts/e2e.json`);
+});
 function check(name, fn) { fn(); checks.push({ name, passed: true }); }
 function cli(...args) {
   const p = spawnSync(process.execPath, ['bin/agentic-ads', ...args], { encoding: 'utf8', timeout: 5000 });
@@ -463,6 +470,129 @@ try {
   if (!stopped) server.stdin.end();
   const timer = setTimeout(() => server.kill('SIGKILL'), 1000);
   await closed; clearTimeout(timer); lines.close();
+}
+// HTTP checks use the real CLI process and ephemeral listening ports.
+async function apiStart(env = {}, options = []) {
+  const child = spawn(process.execPath, ['bin/agentic-ads', 'serve', '--port', '0', ...options], {
+    env: { ...process.env, AGENTIC_ADS_TOKEN: '', AGENTIC_ADS_CORS_ORIGIN: '', ...env },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  const done = new Promise(resolve => child.once('close', (code, signal) => resolve({ code, signal })));
+  child.stderr.on('data', x => { output += x; });
+  const ready = new Promise((resolve, reject) => {
+    child.on('error', reject);
+    child.stdout.on('data', x => {
+      output += x;
+      const match = output.match(/"port":(\d+)/);
+      if (match) resolve(`http://127.0.0.1:${match[1]}`);
+    });
+    child.once('close', () => reject(new Error('API startup failed: ' + output)));
+  });
+  const timer = setTimeout(() => child.kill('SIGKILL'), 5000);
+  let base;
+  try { base = await ready; } finally { clearTimeout(timer); }
+  return { base, output: () => output, async stop() {
+    child.kill('SIGTERM');
+    const timer = setTimeout(() => child.kill('SIGKILL'), 2000);
+    try { assert.deepEqual(await done, { code: 0, signal: null }, 'API SIGTERM'); }
+    finally { clearTimeout(timer); }
+  } };
+}
+const apiToken = 'api-secret-739f0c';
+async function apiCall(api, path, expected, options = {}) {
+  const response = await fetch(api.base + path, { ...options, signal: AbortSignal.timeout(15000) });
+  const text = await response.text();
+  check(`API ${options.method ?? 'GET'} ${path} ${expected}`, () => {
+    assert.equal(response.status, expected, `API status ${path}: ${text}`);
+    assert.match(response.headers.get('content-type'), /application\/json/);
+    assert.ok(!text.includes(apiToken), 'API token response leak');
+    assert.ok(!Object.hasOwn(JSON.parse(text), 'stack'), 'API stack leak');
+  });
+  return { value: JSON.parse(text), headers: response.headers };
+}
+const post = value => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(value) });
+const api = await apiStart();
+const apiRoutes = [
+  ['/health', null], ['/v1/formats', ['formats']], ['/v1/hooks', ['list-hooks']],
+  ['/v1/templates', ['list-templates']], ['/v1/qa-rules', ['qa-rules']],
+  ...formats.value.map(f => ['/v1/formats/' + f.id, ['formats', 'show', f.id]]),
+  ...qa.value.map(r => ['/v1/qa-rules/' + r.id, ['qa-rules', 'show', r.id]]),
+];
+try {
+  for (const [path, argv] of apiRoutes) {
+    const r = await apiCall(api, path, 200);
+    check('API CLI parity ' + path, () => {
+      assert.deepEqual(r.value, argv ? cli(...argv).value : { status: 'ok' });
+      assert.equal(r.headers.get('access-control-allow-origin'), null);
+    });
+  }
+  for (const copy of ['Browse listings', 'Guaranteed profit']) {
+    const r = await apiCall(api, '/v1/lint', 200, post({ copy, category: 'housing' }));
+    check('API lint parity ' + copy, () => assert.deepEqual(r.value, cli('lint', '--copy', copy, '--category', 'housing').value));
+  }
+  const planned = await apiCall(api, '/v1/plan', 200, post({ format: 'sitcom', site: 'demo' }));
+  check('API plan parity', () => assert.deepEqual(planned.value, cli('plan', '--format', 'sitcom', '--site', 'demo').value));
+  for (const fields of [{ apply: true }, { apply: false }, { nested: { apply: true } }]) {
+    const r = await apiCall(api, '/v1/plan', 400, post({ format: 'sitcom', site: 'demo', ...fields }));
+    check('API apply refused', () => assert.equal(r.value.error, 'Apply is unavailable'));
+  }
+  await apiCall(api, '/v1/plan?apply=true', 400, post({ format: 'sitcom', site: 'demo' }));
+  await apiCall(api, '/v1/lint', 413, post({ copy: 'x'.repeat(65536) }));
+  const { Readable } = await import('node:stream');
+  await apiCall(api, '/v1/lint', 413, { method: 'POST', headers: { 'content-type': 'application/json' },
+    body: Readable.from(['{"copy":"', 'é'.repeat(32768), '"}']), duplex: 'half' });
+  for (const type of ['text/plain', '']) await apiCall(api, '/v1/lint', 415, { ...post({ copy: 'ok' }), headers: { 'content-type': type } });
+  for (const body of ['{', 'null', '[]', '{"copy":2}']) await apiCall(api, '/v1/lint', 400, { ...post({}), body });
+  await apiCall(api, '/missing', 404);
+  for (const path of ['/v1/formats/missing', '/v1/qa-rules/missing']) await apiCall(api, path, 404);
+  for (const [path] of apiRoutes) await apiCall(api, path, 405, post({}));
+  await apiCall(api, '/v1/plan', 405);
+  await apiCall(api, '/v1/lint', 405);
+  await Promise.all([apiCall(api, '/v1/hooks', 200), apiCall(api, '/v1/templates', 200)]);
+  const { connect } = await import('node:net');
+  const slow = await new Promise((resolve, reject) => {
+    const start = Date.now(), socket = connect(Number(new URL(api.base).port), '127.0.0.1');
+    let response = '';
+    socket.setTimeout(14000, () => { socket.destroy(); reject(new Error('API timeout missing')); });
+    socket.on('error', reject); socket.on('data', x => { response += x; });
+    socket.on('connect', () => socket.write('POST /v1/lint HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 10\r\n\r\n{'));
+    socket.on('close', () => resolve({ response, elapsed: Date.now() - start }));
+  });
+  check('API ten-second request timeout', () => {
+    assert.match(slow.response, /HTTP\/1.1 408/); assert.match(slow.response, /application\/json/);
+    assert.ok(slow.elapsed >= 9000 && slow.elapsed < 13000);
+  });
+} finally { await api.stop(); }
+check('API SIGTERM stops server', () => assert.equal(api.output().includes(apiToken), false));
+const secured = await apiStart({ AGENTIC_ADS_TOKEN: apiToken, AGENTIC_ADS_CORS_ORIGIN: 'https://admin.example' });
+try {
+  for (const path of [...apiRoutes.map(r => r[0]), '/v1/lint', '/v1/plan', '/missing']) {
+    await apiCall(secured, path, 401);
+    await apiCall(secured, path, 401, { headers: { authorization: 'Bearer wrong' } });
+  }
+  const auth = { authorization: 'Bearer ' + apiToken };
+  for (const [path] of apiRoutes) await apiCall(secured, path, 200, { headers: auth });
+  await apiCall(secured, '/v1/lint', 200, { ...post({ copy: 'Browse listings' }), headers: { ...post({}).headers, ...auth } });
+  await apiCall(secured, '/v1/plan', 200, { ...post({ format: 'sitcom', site: 'demo' }), headers: { ...post({}).headers, ...auth } });
+  await apiCall(secured, '/v1/formats/' + apiToken, 404, { headers: auth });
+  await apiCall(secured, '/v1/plan', 400, { ...post({ format: 'sitcom', site: apiToken }), headers: { ...post({}).headers, ...auth } });
+  for (const origin of ['https://admin.example', 'https://evil.example']) {
+    const r = await apiCall(secured, '/health', 200, { headers: { ...auth, origin } });
+    check('API exact CORS ' + origin, () => assert.equal(r.headers.get('access-control-allow-origin'), origin.includes('evil') ? null : origin));
+  }
+  await apiCall(secured, '/v1/plan', 401, { method: 'OPTIONS', headers: { origin: 'https://admin.example' } });
+} finally { await secured.stop(); }
+check('API token absent from logs', () => assert.ok(!secured.output().includes(apiToken)));
+for (const options of [['--host', '0.0.0.0'], ['--port', '-1'], ['--port', 'NaN'], ['--port', '65536'], ['--host', ''], ['--port', '1', '--port', '2']]) {
+  const r = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', ...options], {
+    encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: '' },
+  });
+  check('API startup rejects ' + options.join(' '), () => {
+    assert.ifError(r.error); assert.equal(r.status, 1);
+    assert.equal((r.stdout + r.stderr).trim().split('\n').length, 1);
+    if (options.includes('0.0.0.0')) assert.match(r.stdout + r.stderr, /Non-loopback host requires AGENTIC_ADS_TOKEN/);
+  });
 }
 const packDir = await mkdtemp(join(tmpdir(), 'aae-pack-'));
 try {
