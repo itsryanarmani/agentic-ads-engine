@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+import { execute, tools } from '../src/index.js';
+try {
+  const [action, ...argv] = process.argv.slice(2);
+  const schema = tools.find(t => t.name === action)?.inputSchema;
+  if (!schema) throw new Error('Use list-templates, list-hooks, lint, or plan');
+  const args = {};
+  while (argv.length) {
+    const flag = argv.shift();
+    if (!flag.startsWith('--')) throw new Error('Expected an option');
+    const key = flag === '--dry-run' ? 'dryRun' : flag.slice(2);
+    if (!Object.hasOwn(schema.properties, key) || Object.hasOwn(args, key)) throw new Error('Unknown or repeated option');
+    if (schema.properties[key].type === 'boolean') args[key] = true;
+    else {
+      if (!argv.length || argv[0].startsWith('--')) throw new Error('Missing option value');
+      args[key] = argv.shift();
+    }
+  }
+  const result = execute(action, args);
+  console.log(JSON.stringify(result));
+  if (result.status === 'blocked' || result.policy?.status === 'blocked') process.exitCode = 2;
+} catch (error) {
+  console.log(JSON.stringify({ error: error.message })); process.exitCode = 1;
+}

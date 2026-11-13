@@ -1,0 +1,46 @@
+#!/usr/bin/env node
+import { execute, tools } from '../src/index.js';
+// MCP stdio uses one JSON-RPC message per line. stdout is protocol-only.
+const send = message => process.stdout.write(JSON.stringify(message) + '\n');
+const fail = (id, code, message) => send({ jsonrpc: '2.0', id, error: { code, message } });
+let initialized = false;
+function receive(line) {
+  let request;
+  try { request = JSON.parse(line); } catch { fail(null, -32700, 'Parse error'); return; }
+  const validId = request && (typeof request.id === 'string' || (typeof request.id === 'number' && Number.isFinite(request.id)));
+  if (!request || Array.isArray(request) || request.jsonrpc !== '2.0' || typeof request.method !== 'string' ||
+      (Object.hasOwn(request, 'id') && !validId)) { fail(null, -32600, 'Invalid request'); return; }
+  if (!Object.hasOwn(request, 'id')) return;
+  const { id, method, params = {} } = request;
+  if (!params || typeof params !== 'object' || Array.isArray(params)) { fail(id, -32602, 'Invalid params'); return; }
+  let result;
+  if (method === 'initialize') {
+    if (typeof params.protocolVersion !== 'string') { fail(id, -32602, 'Missing protocol version'); return; }
+    initialized = true;
+    result = { protocolVersion: '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'agentic-ads-engine', version: '0.1.0' } };
+  } else if (method === 'ping') result = {};
+  else if (!initialized) { fail(id, -32002, 'Initialize first'); return; }
+  else if (method === 'tools/list') result = { tools };
+  else if (method === 'tools/call') {
+    if (typeof params.name !== 'string' || !tools.some(t => t.name === params.name)) { fail(id, -32602, 'Unknown tool'); return; }
+    try {
+      const value = execute(params.name, params.arguments === undefined ? {} : params.arguments);
+      result = { content: [{ type: 'text', text: JSON.stringify(value) }], isError: value.status === 'blocked' || value.policy?.status === 'blocked' };
+    } catch (error) { result = { content: [{ type: 'text', text: error.message }], isError: true }; }
+  } else { fail(id, -32601, 'Method not found'); return; }
+  send({ jsonrpc: '2.0', id, result });
+}
+let buffer = '', dropping = false;
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', chunk => {
+  // Bound each frame to prevent unbounded buffering from a malformed client.
+  for (const part of chunk.split(/(?<=\n)/)) {
+    if (!dropping) buffer += part;
+    if (buffer.length > 65536) { buffer = ''; dropping = true; fail(null, -32600, 'Frame too large'); }
+    if (part.endsWith('\n')) {
+      if (!dropping && buffer.trim()) receive(buffer);
+      buffer = ''; dropping = false;
+    }
+  }
+});
+process.stdin.on('end', () => { if (buffer.trim() && !dropping) receive(buffer); });
