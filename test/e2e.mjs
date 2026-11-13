@@ -130,7 +130,7 @@ check('logged endpoint prices', () => {
 check('new styles retain evidence and required rules', () => {
   const cases = [
     ['street-interview', ['R21', 'R22', 'R24'], ['host', 'guest', 'handheld mic', '2010s phone'], 0.874],
-    ['backrooms-dialogue', ['R21', 'R22', 'R25'], ['Two characters', 'endless yellow corridors', '1980s VHS', '1990s camcorder', '2010s street'], 0.506],
+    ['backrooms-dialogue', ['R21', 'R22'], ['Two characters', 'endless yellow corridors', '1980s VHS', '1990s camcorder', '2010s street'], 0.506],
     ['horror-comic', ['R25'], ['behind a door', 'sting', 'reacts', 'comedy'], 0.128],
   ];
   for (const [id, rules, terms, cost] of cases) {
@@ -146,6 +146,9 @@ check('new styles retain evidence and required rules', () => {
     assert.ok(f.sources.includes('COST_TABLE.md'));
   }
   for (const id of ['R24', 'R25']) assert.ok(formats.value.some(f => f.feedbackRules.includes(id)));
+  const byId = id => formats.value.find(f => f.id === id).feedbackRules;
+  for (const id of ['R13', 'R21', 'R22']) assert.ok(!byId('horror-comic').includes(id), `horror-comic has one character: no ${id}`);
+  assert.ok(!byId('backrooms-dialogue').includes('R25'), 'backrooms-dialogue plans no scare: R25 belongs to horror-comic');
 });
 check('audio gate instructions preserve limits', () => {
   for (const [id, terms] of Object.entries({

@@ -12,6 +12,6 @@
   "eyes": "Inspect eyelines and eye artifacts in each person shot.",
   "loudness_master": "Measure the final file: integrated target -14 LUFS, inclusive band -16 to -12 LUFS; true peak at or below -1 dBTP.",
   "caption_ocr": "OCR captions from the final file; character error rate must be 0.10 or less for each caption.",
-  "voice_consistency": "Measure max/min per-line median pitch per character. Spread at or below 1.25 passes; above 1.25 through 1.6 needs OWNER CHECK; above 1.6 fails. Missing line stems or character mapping means NOT CHECKED. Pitch does not prove voice fit.",
+  "voice_consistency": "Measure max/min per-line median pitch per character. Spread at or below 1.25 is a pitch-consistency PASS (a proxy; the threshold is provisional pending a speaker-similarity calibration); above 1.25 through 1.6 needs OWNER CHECK; above 1.6 fails. Missing line stems or character mapping means NOT CHECKED. Pitch does not prove voice fit.",
   "stem_sfx": "Measure SFX sync and level from separate voice and SFX stems. A mixed track cannot measure them separately. Missing stems means NOT CHECKED. Compare cues with picture events; R25 stings start within 0.2 s. Record level relative to voice and request owner listening review."
 }
