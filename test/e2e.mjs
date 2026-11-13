@@ -151,14 +151,14 @@ check('new styles retain evidence and required rules', () => {
   for (const id of ['R13', 'R21', 'R22']) assert.ok(!byId('horror-comic').includes(id), `horror-comic has one character: no ${id}`);
   assert.ok(!byId('backrooms-dialogue').includes('R25'), 'backrooms-dialogue plans no scare: R25 belongs to horror-comic');
   for (const id of ['street-interview', 'backrooms-dialogue', 'horror-comic']) assert.equal(formats.value.find(f => f.id === id).durationSeconds.min, 16, `${id} minimum length follows the measured videos`);
-  assert.match(gatesText.voice_consistency, /provisional/, 'voice gate stays a provisional proxy');
+  assert.match(gatesText.voice_consistency, /never fails.*owner check/is, 'voice gate never fails and stays an owner check');
 });
 check('audio gate instructions preserve limits', () => {
   for (const [id, terms] of Object.entries({
     loudness_master: ['final file', '-14 LUFS', '-16 to -12 LUFS', '-1 dBTP'],
     caption_ocr: ['final file', '0.10', 'each caption'],
-    voice_consistency: ['per character', '1.25', '1.6', 'OWNER CHECK', 'NOT CHECKED'],
-    stem_sfx: ['separate voice and SFX stems', 'mixed track cannot', 'NOT CHECKED', '0.2 s'],
+    voice_consistency: ['per character', 'above 1.25', 'asks a person to listen', 'never fails', 'OWNER CHECK', 'NOT CHECKED', '1 rejected voice', '11 accepted voices', 'small sample', 'neither pitch spread nor a speaker embedding separated them'],
+    stem_sfx: ['separate voice and SFX stems', 'laughs left out', 'mixed track cannot', 'NOT CHECKED', 'no SFX onsets', '80%', '80 ms', 'cut without SFX is fine', 'beat times via --cuts', '0.2 s'],
   })) for (const term of terms) assert.ok(gateDefinitions[id].includes(term), `${id}: ${term}`);
 });
 check('sitcom and lo-fi lessons survive', () => {
@@ -450,6 +450,7 @@ try {
   const init = await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
   check('MCP initialize', () => assert.equal(init.result.protocolVersion, '2024-11-05'));
   const pkgVersion = JSON.parse(await readFile('package.json', 'utf8')).version;
+  check('release version is 0.3.0', () => assert.equal(pkgVersion, '0.3.0'));
   check('MCP server version matches package.json', () => assert.equal(init.result.serverInfo.version, pkgVersion));
   server.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
   const list = await request('tools/list');

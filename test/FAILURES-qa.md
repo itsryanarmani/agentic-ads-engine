@@ -21,6 +21,10 @@ Write these cases before implementation. Verify them through CLI and MCP process
 - An unknown rule lacks a helpful error or CLI exit code 1.
 - The package omits the QA module or rule data.
 - A caller changes shared rule data through a returned object.
+- Voice instructions claim an automatic pass or failure instead of an owner check.
+- Voice instructions omit the small sample or the failed pitch and embedding comparisons.
+- SFX instructions omit onset precision, separate stems, excluded laughs, or beat times via `--cuts`.
+- The release version differs from 0.3.0 or the MCP server version.
 
 Pin format kinds and complete rule lists in qa-expectations.json.
 Inject five separate one-line faults:
