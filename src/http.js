@@ -1,6 +1,5 @@
 import { createServer } from 'node:http';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { isIP } from 'node:net';
 import { execute } from './index.js';
 const digest = value => createHash('sha256').update(value).digest();
 const hasApply = value => value && typeof value === 'object' && Object.entries(value).some(([key, item]) => key === 'apply' || hasApply(item));
@@ -16,9 +15,10 @@ export async function serve(argv) {
   if (!/^\d+$/.test(String(options.port)) || Number(options.port) > 65535) throw new Error('Invalid port');
   options.port = Number(options.port);
   const token = process.env.AGENTIC_ADS_TOKEN || '';
-  const loopback = options.host === 'localhost' || options.host === '::1' || (isIP(options.host) === 4 && options.host.startsWith('127.'));
+  const loopback = ['localhost', '::1', '127.0.0.1'].includes(options.host);
   if (!loopback && !token) throw new Error('Non-loopback host requires AGENTIC_ADS_TOKEN');
-  if (token && token.trim().length < 32) throw new Error('AGENTIC_ADS_TOKEN needs 32 or more characters');
+  if (token && token !== token.trim()) throw new Error('AGENTIC_ADS_TOKEN must not start or end with spaces');
+  if (token && token.length < 32) throw new Error('AGENTIC_ADS_TOKEN needs 32 or more characters');
   let boundPort = 0;
   // Pin localhost to loopback rather than trusting hostname resolution.
   if (options.host === 'localhost') options.host = '127.0.0.1';

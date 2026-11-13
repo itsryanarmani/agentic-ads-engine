@@ -596,21 +596,21 @@ for (const [host, expected] of [['evil.com', 403], [`evil.com:${new URL(hostApi.
   check('API Host header ' + host, () => assert.equal(status, expected, 'API Host header ' + host));
 }
 await hostApi.stop();
-for (const weakToken of ['short-token', ' '.repeat(40)]) {
+for (const weakToken of ['short-token', ' '.repeat(40), 'x'.repeat(32) + ' ', ' ' + 'x'.repeat(32)]) {
   const weak = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', '--port', '0'], { encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: weakToken } });
   check('API startup rejects a weak token of length ' + weakToken.length, () => {
     assert.equal(weak.status, 1, 'weak token accepted'); assert.equal((weak.stdout + weak.stderr).trim().split('\n').length, 1);
-    assert.match(weak.stdout + weak.stderr, /32 or more characters/);
+    assert.match(weak.stdout + weak.stderr, /32 or more characters|start or end with spaces/);
   });
 }
-for (const options of [['--host', '0.0.0.0'], ['--port', '-1'], ['--port', 'NaN'], ['--port', '65536'], ['--host', ''], ['--port', '1', '--port', '2']]) {
+for (const options of [['--host', '0.0.0.0'], ['--host', '127.0.0.2'], ['--port', '-1'], ['--port', 'NaN'], ['--port', '65536'], ['--host', ''], ['--port', '1', '--port', '2']]) {
   const r = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', ...options], {
     encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: '' },
   });
   check('API startup rejects ' + options.join(' '), () => {
     assert.ifError(r.error); assert.equal(r.status, 1);
     assert.equal((r.stdout + r.stderr).trim().split('\n').length, 1);
-    if (options.includes('0.0.0.0')) assert.match(r.stdout + r.stderr, /Non-loopback host requires AGENTIC_ADS_TOKEN/);
+    if (options.includes('0.0.0.0') || options.includes('127.0.0.2')) assert.match(r.stdout + r.stderr, /Non-loopback host requires AGENTIC_ADS_TOKEN/);
   });
 }
 const packDir = await mkdtemp(join(tmpdir(), 'aae-pack-'));

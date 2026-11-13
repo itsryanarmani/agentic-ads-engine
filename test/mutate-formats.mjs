@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 const catalog = 'src/formats/library.json', planner = 'src/formats/index.js';
 const faults = [
   ['missing QA gates', catalog, /"qaGates": \[[^\n]+\]/, '"qaGates": []', /missing QA gates/],
-  ['duplicate format ID', catalog, '"id": "text-broll"', '"id": "screen-voiceover"', /duplicate format ID/],
+  ['duplicate format ID', catalog, '"id": "text-broll"', '"id": "screen-voiceover"', /duplicate format ID|strictly deep-equal/],
   ['plan applies', planner, 'dryRun: true, applied: false', 'dryRun: false, applied: true', /false !== true/],
 ];
 for (const [name, id, match, replacement, failure] of [

@@ -210,7 +210,7 @@ Errors return JSON without stacks: 400 invalid input, 401 unauthorized, 403 forb
 405 wrong method, 408 timeout, 413 oversized body, and 415 unsupported media type.
 
 Set `AGENTIC_ADS_TOKEN` to require `Authorization: Bearer <token>` on every route, including health.
-The token needs 32 or more characters. Without a token, the server accepts only loopback `Host` values with its own port. This blocks DNS rebinding from a web page.
+The token needs 32 or more characters and must not start or end with spaces. Without a token, the server accepts only loopback `Host` values with its own port. This blocks DNS rebinding from a web page.
 A non-loopback host requires this setting. The server never logs bodies or tokens.
 Responses containing the configured token are refused. Use TLS through your admin site's server for remote access.
 
