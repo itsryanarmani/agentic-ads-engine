@@ -14,3 +14,13 @@ export const templates = [
   brandTokens: ['name', 'primary', 'background', 'foreground'],
   renderer: 'template', costClass: 'free', policy: { textExact: true, imageMayContainText: false },
 }));
+
+// Freeze every nested descriptor so callers cannot change rendering limits or risk.
+function deepFreeze(value) {
+  if (value && typeof value === 'object') {
+    for (const child of Object.values(value)) deepFreeze(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+deepFreeze(templates);

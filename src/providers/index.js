@@ -7,8 +7,10 @@ import { templates } from '../templates/index.js';
 export function guardCost(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid cost or cap');
   for (const key of ['costMinor', 'adSpentMinor', 'monthSpentMinor', 'perAdMinor', 'perMonthMinor']) {
+    if (!Object.hasOwn(input, key)) throw new Error(`Invalid cost or cap: ${key} must be an own property`);
     if (!Number.isSafeInteger(input[key]) || input[key] < 0) throw new Error('Invalid cost or cap');
   }
+  if ('apply' in input && !Object.hasOwn(input, 'apply')) throw new Error('Invalid cost or cap: apply must be an own property');
   const reasons = [];
   if (input.costMinor > 0 && input.apply !== true) reasons.push('apply_required');
   if (input.costMinor > input.perAdMinor - input.adSpentMinor) reasons.push('per_ad_cap');
