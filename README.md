@@ -153,3 +153,34 @@ Sitcom has dialogue. Talking-object has visible speech. All current formats have
 
 Run `node test/mutate-qa.mjs` to verify three deliberate faults and restore the files.
 Results go to `test/artifacts/qa-mutations.json` and `test/artifacts/e2e.json`.
+
+## Hook catalog
+
+```sh
+node bin/agentic-ads hooks
+node bin/agentic-ads hooks show shocked-face
+node bin/agentic-ads hooks pick --format pov --emotion curiosity --housing
+```
+
+The catalog contains 42 hooks. Each includes format IDs, emotion, kind, risk, a housing flag, and a short rationale.
+The patterns paraphrase the supplied playbook and style catalog. They include the six requested owner feedback openings.
+No research records, personal data, or account IDs are included.
+
+MCP exposes `list_hooks({format?, emotion?, housing?})`, `get_hook({id})`, and `pick_hooks({format, emotion?, housing?})`.
+CLI and MCP picks return all matching hooks in catalog order, with cold-start scores.
+The original `list-hooks` command and MCP tool still return the whole catalog.
+Format, emotion, and housing filters combine with AND. Invalid filters fail; no matches return an empty list.
+
+The library exports `listHooks`, `getHook`, and `pickHooks(filter, scores = {})`.
+Picks rank matching hooks by descending score. Catalog order resolves ties.
+`selectFor(site, goal, filter = {})` retains its low-risk rule and returns one hook or `null`.
+The original two-argument call still works. Filters apply before score ranking.
+`housing: true` keeps only hooks with `housingSafe: true`. It does not filter by risk level, so medium-risk hooks can still appear.
+
+`housingSafe` means the pattern passes housing lint with generic slot values and contains no eligibility claim, invented number, or testimonial.
+It does not approve arbitrary slot values or rendered media. Fill every slot and lint the final copy before use.
+Every result still requires human review. Personal savings, occupancy, interviews, and broken-trust claims remain outside the housing-safe set.
+
+Run `node test/mutate-hooks.mjs` to verify three single-line faults and restore the catalog.
+Evidence goes to `test/artifacts/hooks-mutations.json`. E2E results go to `test/artifacts/e2e.json`.
+`test/hook-expectations.json` pins every ID and housing flag; review changes to this file explicitly.
