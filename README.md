@@ -134,3 +134,22 @@ No paid calls, current price checks, media QA, or platform approval occur here.
 
 Run `node test/mutate-formats.mjs` to repeat the three deliberate faults and restore the files.
 It records failures and the restored pass in `test/artifacts/formats-mutations.json`.
+
+### Owner feedback checks
+
+`agentic-ads qa-rules` lists R1 through R18. Use `agentic-ads qa-rules show R5`
+to read one rule. MCP provides `list_qa_rules` and `get_qa_rule` with an `id` argument.
+
+Each format declares `kinds` and `feedbackRules`. A format plan includes
+`reviewChecklist` entries and the six instructions in `costRatchet`.
+Every entry starts as `NOT CHECKED`. This status blocks shipping.
+A reviewer must record PASS or FAIL with a measured value. Voice and sound fit need the owner's ear.
+
+The JavaScript API exports `listRules()`, `getRule(id)`, and `checklistFor(format)`.
+Pass a format descriptor from `getFormat(id)` to `checklistFor`.
+Rules use `blocking` severity. `applies` names format kinds; `all` covers every format.
+Story formats include stickman, POV, before-after, lo-fi, sitcom, and storytime.
+Sitcom has dialogue. Talking-object has visible speech. All current formats have captions.
+
+Run `node test/mutate-qa.mjs` to verify three deliberate faults and restore the files.
+Results go to `test/artifacts/qa-mutations.json` and `test/artifacts/e2e.json`.

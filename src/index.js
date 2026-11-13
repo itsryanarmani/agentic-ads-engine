@@ -1,3 +1,5 @@
+import { listRules, getRule } from './qa/index.js';
+export { listRules, getRule, checklistFor, costRatchet } from './qa/index.js';
 import { listFormats, getFormat, planFormat } from './formats/index.js';
 export { listFormats, getFormat, planFormat };
 import { templates } from './templates/index.js';
@@ -8,6 +10,7 @@ export { templates, hooks, selectFor, lint, templateProvider, guardCost };
 export { readScores, writeScores } from './hooks/index.js';
 const string = { type: 'string' };
 const fields = {
+  list_qa_rules: {}, get_qa_rule: { id: string },
   list_formats: { costClass: { type: 'string', enum: ['free', 'cheap', 'mid', 'expensive'] }, risk: { type: 'string', enum: ['low', 'medium', 'high'] } },
   get_format: { id: string },
   plan_format: { format: string, site: string, goal: string, dryRun: { type: 'boolean' } },
@@ -16,8 +19,8 @@ const fields = {
   plan: { site: string, goal: string, template: string, ratio: { enum: ['4:5', '9:16'], type: 'string' }, copy: string, category: { enum: ['housing', 'none'], type: 'string' }, apply: { type: 'boolean' }, dryRun: { type: 'boolean' } },
 };
 export const tools = Object.entries(fields).map(([name, properties]) => ({
-  name, description: ({ list_formats: 'List video formats with optional cost and risk filters.', get_format: 'Get a video format descriptor.', plan_format: 'Plan video stages offline. Apply is unavailable.', 'list-templates': 'List starter template descriptors.', 'list-hooks': 'List hook patterns and risks.', lint: 'Check ad copy; findings always require review.', plan: 'Preview a zero-cost plan. Apply is unavailable.' })[name],
-  inputSchema: { type: 'object', properties, additionalProperties: false, ...({ lint: ['copy'], get_format: ['id'], plan_format: ['format', 'site'] }[name] ? { required: { lint: ['copy'], get_format: ['id'], plan_format: ['format', 'site'] }[name] } : {}) },
+  name, description: ({ list_qa_rules: 'List owner feedback QA rules.', get_qa_rule: 'Get an owner feedback QA rule.', list_formats: 'List video formats with optional cost and risk filters.', get_format: 'Get a video format descriptor.', plan_format: 'Plan video stages offline. Apply is unavailable.', 'list-templates': 'List starter template descriptors.', 'list-hooks': 'List hook patterns and risks.', lint: 'Check ad copy; findings always require review.', plan: 'Preview a zero-cost plan. Apply is unavailable.' })[name],
+  inputSchema: { type: 'object', properties, additionalProperties: false, ...({ lint: ['copy'], get_qa_rule: ['id'], get_format: ['id'], plan_format: ['format', 'site'] }[name] ? { required: { lint: ['copy'], get_qa_rule: ['id'], get_format: ['id'], plan_format: ['format', 'site'] }[name] } : {}) },
 }));
 /** Shared CLI/MCP dispatch. Unknown inputs fail before any action. */
 export function execute(action, args = {}) {
@@ -30,6 +33,8 @@ export function execute(action, args = {}) {
     if (!Object.hasOwn(fields[action], key) || typeof value !== field.type || (field.enum && !field.enum.includes(value))) throw new Error('Invalid argument');
     if (typeof value === 'string' && value.length > 20000) throw new Error('Argument too long');
   }
+  if (action === 'list_qa_rules') return listRules();
+  if (action === 'get_qa_rule') return getRule(args.id);
   if (action === 'list_formats') return listFormats(args);
   if (action === 'get_format') return getFormat(args.id);
   if (action === 'plan_format') return planFormat(args);
