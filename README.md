@@ -84,7 +84,7 @@ Start `node bin/agentic-ads-mcp`, or use the installed `agentic-ads-mcp` executa
 Configure the client to use this command with stdio transport.
 The server uses newline-delimited JSON-RPC and protocol version `2024-11-05`.
 It supports `initialize`, `ping`, `tools/list`, and `tools/call`.
-The four tools use the same names and arguments as the CLI; `--dry-run` becomes `dryRun`.
+The original four tools use the same names and arguments as the CLI; `--dry-run` becomes `dryRun`.
 Stdout contains protocol messages only. Frames are limited to 65,536 characters.
 Tool results contain JSON text. Blocked copy sets `isError: true` and retains its findings.
 
@@ -103,3 +103,32 @@ No source assets or competitor copy are bundled. Research informs the formats an
 The E2E script spawns both executables and a library integration process.
 It records assertions in `test/artifacts/e2e.json`, which Git ignores and npm excludes.
 Run `npm run ci:local` before any future push. Publishing and pushing are separate operator actions.
+
+## Video formats
+
+```sh
+node bin/agentic-ads formats
+node bin/agentic-ads formats --cost-class cheap --risk medium
+node bin/agentic-ads formats show sitcom
+node bin/agentic-ads plan --format sitcom --site demo
+```
+
+Twelve formats cover the eight catalog recipes, lo-fi UGC, sitcom, storytime, and talking objects.
+MCP adds `list_formats({costClass?, risk?})`, `get_format({id})`, and `plan_format({format, site, goal?, dryRun?})`.
+These tools return the same JSON as the commands above.
+The library exports `listFormats`, `getFormat`, and `planFormat` from the package root and `agentic-ads-engine/formats`.
+Filters combine with AND. Unknown formats fail. Format plans require a site slug and default to dry-run.
+Plans return ordered stages, stage estimates, total estimates, policy notes, QA gates, and zero actual spend.
+Apply remains unavailable. QA gates describe required checks; this planner does not run them.
+
+Source paths refer to the supplied `directory/ads-research` archive, reviewed on 2026-11-12.
+Provider `verified` records that source review date. It does not promise current prices or successful renders.
+`unverified: true` marks proposed routes or unresolved quality. Local routes can name tools instead of models.
+Costs exclude labour and compute. Stage notes state asset counts and reuse assumptions.
+The sitcom run cost $2.466; four mouth checks still failed. Its selected speech model preserves that limitation.
+Lo-fi costs reference reused assets: $0.881 for three videos6 ads and $0.165 for three videos5 voice edits.
+Fresh generation estimates differ. The style catalog did not render its recommended local recipes.
+No paid calls, current price checks, media QA, or platform approval occur here.
+
+Run `node test/mutate-formats.mjs` to repeat the three deliberate faults and restore the files.
+It records failures and the restored pass in `test/artifacts/formats-mutations.json`.

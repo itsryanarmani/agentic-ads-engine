@@ -12,6 +12,81 @@ function cli(...args) {
   assert.ifError(p.error); assert.equal(p.stderr, '');
   return { status: p.status, value: JSON.parse(p.stdout) };
 }
+const formats = cli('formats');
+const stageIds = 'script set character still angle_still image_to_video talking_head tts sfx laugh_track captions edit end_card mute_test qa'.split(' ');
+const gateIds = 'continuity mouth_sync caption_timing dead_air tail shot_length words_per_second mute_test orientation black_corners eyes'.split(' ');
+check('format descriptors and unique IDs', () => {
+  assert.equal(formats.status, 0); assert.ok(formats.value.length >= 12);
+  assert.equal(new Set(formats.value.map(f => f.id)).size, formats.value.length, 'duplicate format ID');
+  for (const f of formats.value) {
+    for (const key of ['id', 'name', 'description', 'hookPattern']) assert.ok(typeof f[key] === 'string' && f[key].trim());
+    assert.ok(f.aspectRatios.length && f.aspectRatios.every(r => ['9:16', '4:5', '16:9', '1:1'].includes(r)));
+    assert.ok(f.durationSeconds.min > 0 && f.durationSeconds.max >= f.durationSeconds.min);
+    assert.ok(f.stages.length && f.stages.every(s => stageIds.includes(s)));
+    assert.equal(new Set(f.stages).size, f.stages.length);
+    assert.ok(f.qaGates.length > 0, 'missing QA gates'); assert.ok(f.qaGates.every(g => gateIds.includes(g)));
+    assert.ok(f.learned.length && f.sources.length && f.riskNotes.some(n => /housing special ad category/.test(n)));
+    assert.ok(f.riskNotes.some(n => /No fake testimonials/.test(n)));
+    assert.ok(['free', 'cheap', 'mid', 'expensive'].includes(f.costClass)); assert.ok(['low', 'medium', 'high'].includes(f.policyRisk));
+    assert.deepEqual(Object.keys(f.providers), f.stages);
+    for (const p of Object.values(f.providers)) {
+      assert.ok(p.model && /^\d{4}-\d{2}-\d{2}$/.test(p.verified)); assert.equal(typeof p.unverified, 'boolean');
+      assert.ok(Number.isFinite(p.estimatedCostUsd.low) && p.estimatedCostUsd.low >= 0);
+      assert.ok(Number.isFinite(p.estimatedCostUsd.high) && p.estimatedCostUsd.high >= p.estimatedCostUsd.low && p.estimatedCostUsd.note);
+    }
+  }
+});
+const expectations = JSON.parse(await readFile('test/format-expectations.json', 'utf8'));
+check('pinned format contracts', () => {
+  assert.deepEqual(formats.value.map(f => f.id).sort(), expectations.map(f => f.id).sort());
+  for (const expected of expectations) {
+    const f = formats.value.find(f => f.id === expected.id);
+    for (const key of ['costClass', 'policyRisk']) assert.equal(f[key], expected[key], `${f.id} ${key}`);
+    assert.deepEqual([...f.qaGates].sort(), [...expected.qaGates].sort(), `${f.id} qaGates`);
+    for (const word of expected.riskKeywords) assert.ok(f.riskNotes.join(' ').toLowerCase().includes(word), `${f.id} missing ${word}`);
+  }
+});
+check('logged endpoint prices', () => {
+  for (const f of formats.value) for (const [stage, p] of Object.entries(f.providers)) {
+    const expected = { still: [0.02, 0.06], angle_still: [0.056, 0.196], tts: [0.03, f.id === 'lo-fi' ? 0.08 : 0.055], image_to_video: [0.15, 0.3], talking_head: [1.5, 1.8] }[stage];
+    if (!p.estimatedCostUsd.high) { assert.equal(p.unverified, true); continue; }
+    assert.deepEqual([p.estimatedCostUsd.low, p.estimatedCostUsd.high], f.id === 'text-broll' ? [0, 0.02] : expected);
+    const model = { still: 'bytedance/seedream-v5.5', angle_still: 'bytedance/seedream-v5.5/edit', tts: 'wavespeed-ai/qwen3-tts/' + (f.id === 'lo-fi' ? 'voice-design' : 'text-to-speech'), image_to_video: 'wavespeed-ai/wan-2.2/i2v-480p-ultra-fast', talking_head: 'wavespeed-ai/wan-2.2/speech-to-video' }[stage];
+    assert.equal(p.model, model); assert.match(p.estimatedCostUsd.note, /spend.json/);
+  }
+});
+check('sitcom and lo-fi lessons survive', () => {
+  const sitcom = formats.value.find(f => f.id === 'sitcom'), lofi = formats.value.find(f => f.id === 'lo-fi');
+  for (const term of ['mediums and close-ups', 'Cut on action', 'silent reaction', 'six of ten']) assert.ok(sitcom.learned.join(' ').includes(term));
+  for (const term of ['No still frames as shots', 'native pace', '3.4']) assert.ok(lofi.learned.join(' ').includes(term));
+  for (const f of [sitcom, lofi]) assert.ok(f.riskNotes.some(n => n.includes('DRAMATIZATION')));
+});
+for (const args of [['formats', 'show', 'missing'], ['plan', '--format', 'missing', '--site', 'demo'], ['formats', 'show'],
+  ['formats', '--costClass', 'mid'], ['formats', '--risk', 'bad'], ['formats', '--cost-class', 'bad'], ['plan', '--format', 'sitcom'],
+  ['plan', '--format', 'sitcom', '--site', '../bad'], ['plan', '--format', 'sitcom', '--site', 'demo', '--apply'],
+  ['plan', '--format', 'sitcom', '--site', 'demo', '--template', 'door-open-teaser']]) {
+  check('format rejects ' + args.join(' '), () => assert.notEqual(cli(...args).status, 0));
+}
+check('unknown format error is clear', () => assert.match(cli('formats', 'show', 'missing').value.error, /Unknown format/));
+const formatCases = [['list_formats', {}, formats.value]];
+for (const costClass of ['free', 'cheap', 'mid', 'expensive']) for (const risk of ['low', 'medium', 'high']) {
+  const filtered = cli('formats', '--cost-class', costClass, '--risk', risk);
+  check(`format filter ${costClass}/${risk}`, () => { assert.equal(filtered.status, 0); assert.deepEqual(filtered.value, formats.value.filter(f => f.costClass === costClass && f.policyRisk === risk)); });
+  formatCases.push(['list_formats', { costClass, risk }, filtered.value]);
+}
+for (const f of formats.value) {
+  const shown = cli('formats', 'show', f.id), planned = cli('plan', '--format', f.id, '--site', 'demo');
+  check('format show and dry-run ' + f.id, () => {
+    assert.equal(shown.status, 0); assert.deepEqual(shown.value, f); assert.equal(planned.status, 0);
+    const p = planned.value; assert.equal(p.dryRun, true); assert.equal(p.applied, false); assert.equal(p.spendUsd, 0);
+    assert.deepEqual(p.stages.map(s => s.id), f.stages); assert.deepEqual(p.qaGates, f.qaGates);
+    assert.equal(p.policyRisk, f.policyRisk); assert.deepEqual(p.riskNotes, f.riskNotes);
+    assert.deepEqual(p.total, f.estimatedCostUsd);
+    for (const key of ['low', 'high']) assert.equal(p.total[key], Math.round(p.stages.reduce((n, s) => n + s.estimatedCostUsd[key], 0) * 1000) / 1000);
+    assert.deepEqual(cli('plan', '--format', f.id, '--site', 'demo', '--dry-run').value, p);
+  });
+  formatCases.push(['get_format', { id: f.id }, shown.value], ['plan_format', { format: f.id, site: 'demo' }, planned.value]);
+}
 const templates = cli('list-templates');
 check('five templates and both ratios', () => {
   assert.equal(templates.status, 0); assert.equal(templates.value.length, 5);
@@ -57,6 +132,14 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { templates, templateProvider, guardCost, selectFor, readScores, writeScores } from './src/index.js';
+const { listFormats, getFormat, planFormat } = await import('./src/index.js');
+const before = listFormats(); const changed = getFormat('sitcom'); changed.stages.length = 0;
+assert.deepEqual(listFormats(), before);
+const input = Object.freeze({ format: 'sitcom', site: 'demo' });
+const result = planFormat(input); result.stages[0].provider.model = 'mutated';
+assert.deepEqual(listFormats(), before); assert.notDeepEqual(planFormat(input), result);
+assert.throws(() => planFormat({ ...input, apply: true }));
+assert.throws(() => planFormat({ ...input, dryRun: false }));
 const dir = await mkdtemp(join(tmpdir(), 'aae-'));
 try {
   assert.deepEqual(await readScores(dir, 'demo'), {});
@@ -116,11 +199,26 @@ try {
   check('MCP initialize', () => assert.equal(init.result.protocolVersion, '2024-11-05'));
   server.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
   const list = await request('tools/list');
-  check('MCP four tools', () => assert.equal(list.result.tools.length, 4));
+  check('MCP seven tools', () => assert.equal(list.result.tools.length, 7));
   for (const [name, args, expected] of [['list-templates', {}, templates.value], ['list-hooks', {}, hooks.value],
-    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value]]) {
+    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...formatCases]) {
     const response = await request('tools/call', { name, arguments: args });
     check('MCP parity ' + name, () => assert.deepEqual(JSON.parse(response.result.content[0].text), expected));
+  }
+  for (const [name, args] of [['get_format', { id: 'missing' }], ['plan_format', { format: 'missing', site: 'demo' }],
+    ['plan_format', { format: 'sitcom', site: 'demo', dryRun: false }], ['plan_format', { format: 'sitcom', site: 'demo', apply: true }]]) {
+    const r = await request('tools/call', { name, arguments: args });
+    check('MCP format rejects ' + JSON.stringify(args), () => { assert.equal(r.result.isError, true); if (args.id === 'missing' || args.format === 'missing') assert.match(r.result.content[0].text, /Unknown format/); });
+  }
+  for (const [name, args, argv] of [
+    ['get_format', {}, ['formats', 'show']], ['plan_format', { format: 'sitcom' }, ['plan', '--format', 'sitcom']],
+    ['plan_format', { format: 'sitcom', site: 'demo', apply: true }, ['plan', '--format', 'sitcom', '--site', 'demo', '--apply']],
+    ['plan', { apply: true }, ['plan', '--apply']]]) {
+    const r = await request('tools/call', { name, arguments: args });
+    check('MCP error parity ' + name + JSON.stringify(args), () => {
+      assert.equal(r.result.isError, true); assert.equal(r.result.content[0].text, cli(...argv).value.error);
+      assert.match(r.result.content[0].text, args.apply ? /Apply is unavailable/ : /Missing required argument/);
+    });
   }
   const unknown = await request('unknown');
   check('MCP method error', () => assert.equal(unknown.error.code, -32601));
@@ -148,7 +246,7 @@ try {
   check('npm pack contents', () => {
     assert.equal(packed.status, 0, packed.stderr);
     const files = Object.values(JSON.parse(packed.stdout))[0].files.map(f => f.path);
-    for (const file of ['LICENSE', 'README.md', 'bin/agentic-ads', 'bin/agentic-ads-mcp', 'src/hooks/library.json']) assert.ok(files.includes(file));
+    for (const file of ['LICENSE', 'README.md', 'bin/agentic-ads', 'bin/agentic-ads-mcp', 'src/hooks/library.json', 'src/formats/index.js', 'src/formats/library.json']) assert.ok(files.includes(file));
     assert.ok(files.every(f => !f.startsWith('test/')));
   });
   const linked = join(packDir, 'agentic-ads');
