@@ -1,14 +1,19 @@
 #!/usr/bin/env node
 import { execute, tools } from '../src/index.js';
 try {
-  const [action, ...argv] = process.argv.slice(2);
-  const schema = tools.find(t => t.name === action)?.inputSchema;
-  if (!schema) throw new Error('Use list-templates, list-hooks, lint, or plan');
+  let [action, ...argv] = process.argv.slice(2);
   const args = {};
+  if (action === 'formats') {
+    action = argv[0] === 'show' ? 'get_format' : 'list_formats';
+    if (action === 'get_format') { argv.shift(); args.id = argv.shift(); }
+  }
+  if (action === 'plan' && argv.includes('--format')) action = 'plan_format';
+  const schema = tools.find(t => t.name === action)?.inputSchema;
+  if (!schema) throw new Error('Use formats, list-templates, list-hooks, lint, or plan');
   while (argv.length) {
     const flag = argv.shift();
     if (!flag.startsWith('--')) throw new Error('Expected an option');
-    const key = flag === '--dry-run' ? 'dryRun' : flag.slice(2);
+    const key = flag === '--dry-run' ? 'dryRun' : flag === '--cost-class' ? 'costClass' : flag.slice(2);
     if (!Object.hasOwn(schema.properties, key) || Object.hasOwn(args, key)) throw new Error('Unknown or repeated option');
     if (schema.properties[key].type === 'boolean') args[key] = true;
     else {
