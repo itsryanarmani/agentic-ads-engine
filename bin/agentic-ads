@@ -7,18 +7,24 @@ try {
     action = argv[0] === 'show' ? 'get_format' : 'list_formats';
     if (action === 'get_format') { argv.shift(); args.id = argv.shift(); }
   }
-  if (action === 'plan' && argv.includes('--format')) action = 'plan_format';
+  if (action === 'plan' && argv.some(arg => arg === '--format' || arg.startsWith('--format='))) action = 'plan_format';
   const schema = tools.find(t => t.name === action)?.inputSchema;
   if (!schema) throw new Error('Use formats, list-templates, list-hooks, lint, or plan');
   while (argv.length) {
-    const flag = argv.shift();
+    const option = argv.shift(), separator = option.indexOf('=');
+    const flag = separator < 0 ? option : option.slice(0, separator);
+    const value = separator < 0 ? undefined : option.slice(separator + 1);
     if (!flag.startsWith('--')) throw new Error('Expected an option');
     const key = flag === '--dry-run' ? 'dryRun' : flag === '--cost-class' ? 'costClass' : flag.slice(2);
     if (flag === '--apply' && ['plan', 'plan_format'].includes(action)) throw new Error('Apply is unavailable in this offline slice');
     if (['--costClass', '--dryRun'].includes(flag) || !Object.hasOwn(schema.properties, key) || Object.hasOwn(args, key)) throw new Error('Unknown or repeated option');
-    if (schema.properties[key].type === 'boolean') args[key] = true;
+    if (schema.properties[key].type === 'boolean') {
+      if (value !== undefined && !['true', 'false'].includes(value)) throw new Error('Invalid argument');
+      args[key] = value !== 'false';
+    }
+    else if (value !== undefined) args[key] = value;
     else {
-      if (!argv.length || argv[0].startsWith('--')) throw new Error('Missing option value');
+      if (!argv.length || argv[0].startsWith('--')) throw new Error(`Missing option value (use ${flag}=VALUE for a value that starts with --)`);
       args[key] = argv.shift();
     }
   }

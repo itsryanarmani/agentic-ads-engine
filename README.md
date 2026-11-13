@@ -24,6 +24,8 @@ npx agentic-ads plan
 CLI output is JSON. Exit codes: `0` for a result, `1` for invalid input, and `2` for blocked copy.
 `lint` requires `--copy`. It accepts `--category housing|none`; the default is `housing`.
 `plan` accepts `--site`, `--goal`, `--template`, `--ratio`, `--copy`, and `--category`.
+Use `--option=value` for values that start with `--`: `node bin/agentic-ads lint --copy=--Sale--`.
+This form preserves `=` inside values. Boolean options accept `=true` or `=false`; plans still require dry-run.
 Site names are lowercase slugs. Ratios are `4:5` and `9:16`.
 
 Plans default to dry-run. `--apply` always fails because this slice has no spending or launch implementation.

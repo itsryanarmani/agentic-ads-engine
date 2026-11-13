@@ -107,6 +107,51 @@ for (const [copy, code] of [
   check(`lint ${code}`, () => { assert.equal(r.status, 2); assert.ok(r.value.findings.some(f => f.code === code || f.code.startsWith(code + '_'))); });
 }
 const safe = cli('lint', '--copy', 'Browse listings');
+const attachedLintCases = [];
+for (const [copy, status, code] of [['--Sale--', 0], ['--best', 2, 'superlative'], ['a=b', 0], ['', 2, 'empty']]) {
+  const result = cli('lint', `--copy=${copy}`, '--category=housing');
+  check(`attached lint ${JSON.stringify(copy)}`, () => {
+    assert.equal(result.status, status, 'attached copy status');
+    if (code) assert.ok(result.value.findings.some(f => f.code === code));
+    const planned = cli('plan', `--copy=${copy}`);
+    assert.equal(planned.status, status); assert.equal(planned.value.copy, copy, 'attached copy preserved');
+    assert.deepEqual(result.value, planned.value.policy);
+  });
+  attachedLintCases.push(['lint', { copy, category: 'housing' }, result.value]);
+}
+for (const options of [['--copy=a', '--copy=b'], ['--copy', 'a', '--copy=b'], ['--copy=a', '--copy', 'b'], ['--copy', 'a', '--copy', 'b']]) {
+  check('repeated copy ' + options.join(' '), () => {
+    const r = cli('lint', ...options);
+    assert.equal(r.status, 1, 'repeated option rejected'); assert.equal(r.value.error, 'Unknown or repeated option');
+  });
+}
+for (const options of [['--copy'], ['--copy', '--Sale'], ['--copy', '--category=housing']]) {
+  check('missing copy ' + options.join(' '), () => {
+    const r = cli('lint', ...options); assert.equal(r.status, 1);
+    assert.equal(r.value.error, 'Missing option value (use --copy=VALUE for a value that starts with --)');
+  });
+}
+for (const [action, flag] of [['plan', '--dryRun'], ['formats', '--costClass']]) for (const suffix of ['', '=true']) {
+  check('removed alias ' + flag + suffix, () => {
+    const r = cli(action, flag + suffix); assert.equal(r.status, 1); assert.equal(r.value.error, 'Unknown or repeated option');
+  });
+}
+for (const [action, options] of [
+  ['lint', ['--copy', 'Browse listings', '--category', 'housing']],
+  ['plan', ['--site', 'demo', '--goal', 'discovery', '--template', 'door-open-teaser', '--ratio', '4:5', '--copy', 'Browse listings', '--category', 'housing']],
+  ['plan', ['--format', 'sitcom', '--site', 'demo', '--goal', 'discovery']],
+  ['formats', ['--cost-class', 'cheap', '--risk', 'medium']], ['get_format', ['--id', 'sitcom']],
+]) {
+  check('attached normal options ' + action + options[0], () => {
+    const normal = cli(action, ...options); assert.equal(normal.status, 0);
+    assert.deepEqual(cli(action, ...options.filter((_, i) => i % 2 === 0).map((flag, i) => `${flag}=${options[i * 2 + 1]}`)), normal);
+  });
+}
+check('attached booleans and invalid values', () => {
+  assert.deepEqual(cli('plan', '--dry-run=true'), cli('plan', '--dry-run'));
+  for (const flag of ['--dry-run=false', '--dry-run=', '--dry-run=anything', '--apply=true', '--apply=false', '--category=bad', '--wat=x']) assert.equal(cli('plan', flag).status, 1);
+  assert.equal(cli('plan', '--dry-run', '--dry-run=true').status, 1);
+});
 check('safe copy still needs review', () => {
   assert.equal(safe.status, 0); assert.equal(safe.value.status, 'review');
   assert.ok(safe.value.findings.length);
@@ -215,7 +260,7 @@ try {
   const list = await request('tools/list');
   check('MCP seven tools', () => assert.equal(list.result.tools.length, 7));
   for (const [name, args, expected] of [['list-templates', {}, templates.value], ['list-hooks', {}, hooks.value],
-    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...formatCases]) {
+    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...formatCases, ...attachedLintCases]) {
     const response = await request('tools/call', { name, arguments: args });
     check('MCP parity ' + name, () => assert.deepEqual(JSON.parse(response.result.content[0].text), expected));
   }
