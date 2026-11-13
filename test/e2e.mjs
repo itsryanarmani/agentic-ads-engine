@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { mkdir, writeFile, mkdtemp, rm, symlink } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -156,6 +156,26 @@ try {
   const linkedRun = spawnSync(linked, ['list-hooks'], { encoding: 'utf8', timeout: 5000 });
   check('linked executable', () => { assert.equal(linkedRun.status, 0); assert.deepEqual(JSON.parse(linkedRun.stdout), hooks.value); });
 } finally { await rm(packDir, { recursive: true, force: true }); }
+const corpus = JSON.parse(await readFile('test/policy-corpus.json', 'utf8'));
+const { lint: lintCopy } = await import('../src/index.js');
+check('policy corpus: honest copy is not blocked', () => {
+  const wrong = corpus.honest.filter(t => lintCopy(t).status === 'blocked');
+  assert.deepEqual(wrong, []);
+});
+check('policy corpus: flagged copy carries a targeting finding', () => {
+  const missed = corpus.flagged.filter(([text, expect]) => {
+    const r = lintCopy(text);
+    return !r.findings.some(f => f.code.startsWith('targeting')) || (expect === 'blocked' && r.status !== 'blocked');
+  }).map(x => x[0]);
+  assert.deepEqual(missed, []);
+});
+check('policy corpus: hostile 20,000-character input stays fast', () => {
+  for (const text of ['\uFDFA'.repeat(20000), '1'.repeat(19999) + 'a', '{{'.repeat(9999), 'no '.repeat(6666)]) {
+    const start = process.hrtime.bigint();
+    lintCopy(text);
+    assert.ok(Number(process.hrtime.bigint() - start) / 1e6 < 500);
+  }
+});
 await mkdir('test/artifacts', { recursive: true });
 const artifact = { command: 'node test/e2e.mjs', node: process.version, passed: checks.length, checks };
 await writeFile('test/artifacts/e2e.json', JSON.stringify(artifact, null, 2) + '\n');
