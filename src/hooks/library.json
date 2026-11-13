@@ -1,0 +1,8 @@
+[
+  {"id":"door","tags":["discovery"],"pattern":"Take a closer look at {{subject}}","risk":"low"},
+  {"id":"compare","tags":["comparison","discovery"],"pattern":"Compare {{subject}} with the details in view","risk":"low"},
+  {"id":"help","tags":["discovery","help"],"pattern":"Need help exploring {{subject}}? Start here","risk":"low"},
+  {"id":"ugc","tags":["experience"],"pattern":"Here is what I observed about {{subject}}","risk":"medium"},
+  {"id":"before-after","tags":["comparison"],"pattern":"Before and after: {{subject}}. Virtual staging preview.","risk":"medium"},
+  {"id":"update","tags":["news"],"pattern":"Brand update: {{subject}} — {{source}}","risk":"high"}
+]
