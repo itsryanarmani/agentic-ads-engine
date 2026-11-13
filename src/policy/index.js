@@ -41,6 +41,17 @@ function preference(subject, welcomeSignals = false) {
   const after = welcomeSignals ? '(?:' + cueAfter + '|welcome)' : cueAfter;
   return new RegExp('\\b(?:' + cueBefore + gap + people + modifier + '(?:' + group + ')|(?:' + group + ')' + gap + people + after + ')\\b');
 }
+// Keep age numbers bounded, including common written ages.
+const ageNumber = '(?:\\d{1,2}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)';
+const ageSpan = ageNumber + '\\s*(?:(?:to|thru|through|[-\\u2013])\\s*' + ageNumber + '|\\+|plus)(?!\\w)';
+const ageRange = new RegExp('\\b(?:age[sd]?(?:[ -]+range)?[\\s-]*' + ageSpan + '|must[ -]+be[ -]+(?:under|over|younger than|older than)[ -]+' + ageNumber + '\\b)');
+const childAmenity = new RegExp('\\b(?:kids|children)[ -]+age[sd]?[\\s-]*' + ageSpan + '[ -]+(?:play[ -]+area|playground)\\b', 'g');
+const ageRestriction = {
+  // Remove only the amenity phrase. Other restrictions in the copy still apply.
+  test: text => ageRange.test(text.replace(childAmenity, ' ')),
+};
+const postalTerm = '(?:(?:zip|postal)(?:[\\s-]*codes?)?|postcodes?)';
+const postalRestriction = new RegExp('\\b(?:' + postalTerm + '[\\s-]+only|(?:only|just)[\\s-]+(?:in[\\s-]+)?(?:these[\\s-]+|the[\\s-]+)?' + postalTerm + '|' + postalTerm + '[\\s-]*(?:targeting|restricted)|' + postalTerm + '[ -]+(?:\\d{5}(?:-\\d{4})?|[a-z]{1,2}\\d[a-z\\d]?[ -]+\\d[a-z]{2})[ -]+(?:residents?[ -]+)?only)\\b');
 const housingRules = [
   ['targeting_age', preference('young(?: professionals?| adults?)?|seniors?|retirees?|millennials?|students?|mature|elderly|teens?|teenagers?|toddlers?|babies|infants?'), 'Remove age or student restrictions and preferences.'],
   ['targeting_familial_status', preference('children|child|kids|kiddos|family|families|parents?|mothers?|fathers?|pregnant'), 'Remove family-status restrictions and preferences.'],
@@ -62,8 +73,8 @@ const housingRules = [
   ['targeting_religion', /\b(?:christian|muslim|jewish|hindu|buddhist|catholic|protestant)[ -]+(?:neighbou?rhood|community|building)(?!\s+(?:cent(?:er|re)|hall|school|hospital|museum|library|church|temple|mosque|synagogue))\b/, 'Remove religious neighborhood preferences.'],
   ['targeting_sex', /\b(?:gay|straight)[ -]friendly\b/, 'Remove sex or gender preferences.'],
   ['targeting_area', /\b(?:zip|postal)[ -]+(?:code[ -]+)?\d{1,10}[ -]+only\b|\b(?:target|targeting|exclude|excluding)\s+(?:residents?\s+)?(?:in\s+)?(?:(?:this|that|the|these|specific|selected)\s+)?(?:areas?|neighbou?rhoods?|districts?)\b|\b(?:locals?|area residents?)\s+only\b/, 'Remove postal or area targeting language.'],
-  ['targeting_age', /\bages?[\s-]*\d{1,2}(?:[\s-]*(?:to|[-\u2013])[\s-]*\d{1,2}|\s*\+|\s*plus)(?!\w)/, 'Remove age ranges.'],
-  ['targeting_area', /\b(?:zip|postal)[\s-]*codes?[\s-]+only\b|\b(?:only|just)[\s-]+(?:in[\s-]+)?(?:these[\s-]+|the[\s-]+)?(?:zip|postal)[\s-]*codes?\b|\b(?:zip|postal)[\s-]*codes?[\s-]*(?:targeting|restricted)\b/, 'Remove ZIP-code targeting.'],
+  ['targeting_age', ageRestriction, 'Remove age ranges or limits.'],
+  ['targeting_area', postalRestriction, 'Remove ZIP-code targeting.'],
 ];
 /** Conservative copy checks, not platform approval or factual verification.
  * @param {string} copy
