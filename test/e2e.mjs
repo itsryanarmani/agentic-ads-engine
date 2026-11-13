@@ -347,7 +347,7 @@ check('policy corpus: flagged copy carries a targeting finding', () => {
   assert.deepEqual(missed, []);
 });
 check('policy corpus: hostile 20,000-character input stays fast', () => {
-  for (const text of ['\uFDFA'.repeat(20000), '1'.repeat(19999) + 'a', '{{'.repeat(9999), 'no '.repeat(6666)]) {
+  for (const text of ['\uFDFA'.repeat(20000), '1'.repeat(19999) + 'a', '{{'.repeat(9999), 'no '.repeat(6666), 'home kids ages 5' + ' -'.repeat(9992), 'home aged 5' + ' -'.repeat(9994)]) {
     const samples = Array.from({ length: 3 }, () => {
       const start = process.hrtime.bigint();
       cli('lint', '--copy', text);

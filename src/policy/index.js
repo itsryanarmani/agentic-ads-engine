@@ -43,7 +43,7 @@ function preference(subject, welcomeSignals = false) {
 }
 // Keep age numbers bounded, including common written ages.
 const ageNumber = '(?:\\d{1,2}|(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:[ -](?:one|two|three|four|five|six|seven|eight|nine))?|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)';
-const ageSpan = ageNumber + '[\\s-]*(?:(?:to|thru|through|[-\\u2013])[\\s-]*' + ageNumber + '|\\+|plus)(?!\\w)';
+const ageSpan = ageNumber + '\\s*(?:(?:to|thru|through|[-\\u2013])\\s*' + ageNumber + '|\\+|plus)(?!\\w)';
 const ageRange = new RegExp('\\b(?:age[sd]?(?:[ -]+range)?[\\s-]*' + ageSpan + '|must[ -]+be[ -]+(?:under|over|younger than|older than)[ -]+' + ageNumber + '\\b)');
 const childAmenity = new RegExp('\\b(?:kids|children)[ -]+age[sd]?[\\s-]*' + ageSpan + '[ -]+(?:play[ -]+area|playground)\\b', 'g');
 const ageRestriction = {
