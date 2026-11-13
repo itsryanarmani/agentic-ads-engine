@@ -1,0 +1,183 @@
+[
+  {
+    "id": "R1",
+    "title": "Wild emotional hook in the first second.",
+    "check": "Watch 0 to 1 s with sound off. Record what frame 0.0 s shows. It must be a strong emotion or an odd event.",
+    "origin": "Round 3 hook was \"not intriguing\".",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R2",
+    "title": "Cause comes before effect on screen. Show the action, then the result, then who reacts.",
+    "check": "Step through 0 to 3 s. No character appears without a reason. No object is already broken.",
+    "origin": "Sitcom: door fell, people appeared at 0:02.",
+    "severity": "blocking",
+    "applies": [
+      "story"
+    ]
+  },
+  {
+    "id": "R3",
+    "title": "Change the camera angle, not only the zoom.",
+    "check": "Look at the frames: the scene-cut filter cannot see a zoom. About one new angle or pose every 2.5 s. Cuts differ in side, height or pose.",
+    "origin": "\"Different left and right views, not slow zooms.\"",
+    "severity": "blocking",
+    "applies": [
+      "character"
+    ]
+  },
+  {
+    "id": "R4",
+    "title": "The same person must show different poses and angles.",
+    "check": "Same face, outfit and hair across all shots. At least 3 poses.",
+    "origin": "Marble lady needed jump cuts.",
+    "severity": "blocking",
+    "applies": [
+      "character"
+    ]
+  },
+  {
+    "id": "R5",
+    "title": "Show problem, agitation, then solution. Make the agitation hurt and be funny.",
+    "check": "Mark the three beats on the timeline. Agitation has at least 3 quick cuts, one prop each.",
+    "origin": "\"Highlight problem and solution agitation.\"",
+    "severity": "blocking",
+    "applies": [
+      "story"
+    ]
+  },
+  {
+    "id": "R6",
+    "title": "No dead gaps. No silent still over 0.3 s. Tail after the last sound under 0.3 s.",
+    "check": "`freezedetect=n=-60dB:d=0.3` crossed with `silencedetect=n=-35dB:d=0.25`. A range in both is a dead gap.",
+    "origin": "Round 4 had dead gaps.",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R7",
+    "title": "Speed up the picture, not the voice. Normal speech pace.",
+    "check": "Words per second from whisper: 2 to 3. Average shot length: 1.5 to 2.2 s for a lo-fi story (the gate in `qa.md`), 1.2 to 1.5 s only for a fast punch edit. No shot over 2.5 s.",
+    "origin": "\"Sound speed too much, pace better.\"",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R8",
+    "title": "Voice, face and ethnicity must match.",
+    "check": "A person listens to each voice with the face. Log the voice id per character.",
+    "origin": "\"Ethnicity of source does not match.\"",
+    "severity": "blocking",
+    "applies": [
+      "character"
+    ]
+  },
+  {
+    "id": "R9",
+    "title": "A story the viewer can follow. It is personal and coherent, in the first person, as a dramatization. It makes no factual claim.",
+    "check": "Read the captions alone. They tell one story in the first person.",
+    "origin": "Meltdown: \"random words\".",
+    "severity": "blocking",
+    "applies": [
+      "story"
+    ]
+  },
+  {
+    "id": "R10",
+    "title": "Captions have spaces. At most 3 words. Time them to the audio.",
+    "check": "Measure the pixel gap: at least 14 px of clear gap between words at 1080 px. Compare caption start with the whisper word start (under 0.15 s).",
+    "origin": "Caption spacing and sync.",
+    "severity": "blocking",
+    "applies": [
+      "captions"
+    ]
+  },
+  {
+    "id": "R11",
+    "title": "Mouth movement matches speech. Mouths close in laugh breaks.",
+    "check": "Manual spot check until measured: mouth movement starts within 100 to 200 ms of voice onset (see `ad-video-editing` qa.md section 6). Where a lip-landmark tool ran, give its correlation (0.4 or more) and the tool name. List each failing line.",
+    "origin": "Sitcom v2 and v3.",
+    "severity": "blocking",
+    "applies": [
+      "dialogue",
+      "speech"
+    ]
+  },
+  {
+    "id": "R12",
+    "title": "Never cut to a static image that makes no sense.",
+    "check": "Check each cut. Every shot has motion or a reason to hold.",
+    "origin": "Sitcom v2 feedback.",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R13",
+    "title": "Back-and-forth dialogue is wanted. Keep it and add more.",
+    "check": "Count speaker changes. At least 4 in a sitcom.",
+    "origin": "\"Love the dialogue.\"",
+    "severity": "blocking",
+    "applies": [
+      "dialogue"
+    ]
+  },
+  {
+    "id": "R14",
+    "title": "Sound is required. The ad also works muted.",
+    "check": "Play with sound off. The story and the offer still read. Ship both files.",
+    "origin": "Round 3 had no sound.",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R15",
+    "title": "Hold the object identity. A phone stays a phone.",
+    "check": "Compare held objects in frames across the clip.",
+    "origin": "Phone turned into a notepad.",
+    "severity": "blocking",
+    "applies": [
+      "character"
+    ]
+  },
+  {
+    "id": "R16",
+    "title": "Lo-fi organic look. No logo. No text except captions, the dramatization tag and one end card with the offer.",
+    "check": "Look at the frames. No logo, no studio polish.",
+    "origin": "Polished images were rejected.",
+    "severity": "blocking",
+    "applies": [
+      "lo-fi"
+    ]
+  },
+  {
+    "id": "R17",
+    "title": "Housing safety. \"dramatization\" label. No invented numbers. No real people. No children.",
+    "check": "Run the policy lint on all text and captions.",
+    "origin": "Housing special ad category.",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R18",
+    "title": "Cost goes down each time. Report cost per video by stage.",
+    "check": "Compare with the last video of the same format. Explain any rise.",
+    "origin": "Goal: cut cost 50 to 75 percent.",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  }
+]

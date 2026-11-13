@@ -13,6 +13,57 @@ function cli(...args) {
   return { status: p.status, value: JSON.parse(p.stdout) };
 }
 const formats = cli('formats');
+const qa = cli('qa-rules');
+const qaExpected = JSON.parse(await readFile('test/qa-expectations.json', 'utf8'));
+const pinnedQa = JSON.parse(await readFile('test/qa-rules-expected.json', 'utf8'));
+const costExpected = [
+  'Set a hard cap before you spend. One writer per spend log.',
+  'Reuse faces, sets, stills, clips and voice ids from earlier videos first.',
+  'Pick one lip-sync model for a format and keep it. Do not repeat a bake-off.',
+  'Do not make the same still twice. Do not pay for an unused line.',
+  'Write `COST_NOTES.md`. Show cost per stage and against the last video of the format.',
+  'A video that costs more than the last one of its format needs a one-line reason.',
+].join('\n');
+check('QA rule catalog', () => {
+  assert.equal(qa.status, 0);
+  assert.deepEqual(qa.value.map(r => r.id), Array.from({ length: 18 }, (_, i) => `R${i + 1}`), 'QA rule IDs');
+  for (const r of qa.value) {
+    for (const key of ['title', 'check', 'origin', 'severity']) assert.ok(typeof r[key] === 'string' && r[key].trim(), `QA non-empty ${key}: ${r.id}`);
+    assert.ok(r.applies.length && r.applies.every(k => typeof k === 'string' && k.trim()));
+  }
+});
+check('QA rule text pinned to the skills table', () => {
+  assert.equal(qa.status, 0);
+  assert.deepEqual(qa.value, pinnedQa, 'QA rule text pinned'); // source: ad-lofi-ugc/references/owner-feedback.md
+  assert.ok(pinnedQa.every(r => r.severity === 'blocking'));
+});
+check('QA pinned formats', () => {
+  assert.deepEqual(formats.value.map(f => f.id), qaExpected.map(f => f.id));
+  for (const f of formats.value) {
+    const expected = qaExpected.find(e => e.id === f.id);
+    assert.deepEqual(f.kinds, expected.kinds);
+    assert.deepEqual(f.feedbackRules, expected.feedbackRules, `QA pinned rules: ${f.id}`);
+    assert.equal(new Set(f.feedbackRules).size, f.feedbackRules.length);
+    assert.ok(f.feedbackRules.every(id => qa.value.some(r => r.id === id)), 'QA unknown reference');
+    const required = ['R1', 'R6', 'R14', 'R17', 'R18',
+      ...(f.stages.includes('captions') ? ['R10'] : []),
+      ...(f.kinds.includes('dialogue') ? ['R11', 'R13'] : []),
+      ...(f.kinds.includes('story') ? ['R2', 'R5', 'R9'] : [])];
+    for (const r of qa.value.filter(r => r.applies.some(k => k === 'all' || f.kinds.includes(k)))) required.push(r.id);
+    for (const id of required) assert.ok(f.feedbackRules.includes(id), `QA required ${id}: ${f.id}`);
+  }
+});
+const qaCases = [['list_qa_rules', {}, qa.value]];
+for (const rule of qa.value) {
+  const shown = cli('qa-rules', 'show', rule.id);
+  check('QA show ' + rule.id, () => { assert.equal(shown.status, 0); assert.deepEqual(shown.value, rule); });
+  qaCases.push(['get_qa_rule', { id: rule.id }, rule]);
+}
+check('QA unknown ID', () => {
+  const r = cli('qa-rules', 'show', 'missing');
+  assert.equal(r.status, 1); assert.match(r.value.error, /Unknown QA rule: missing.*qa-rules/);
+  assert.equal(cli('qa-rules', 'show').status, 1);
+});
 const stageIds = 'script set character still angle_still image_to_video talking_head tts sfx laugh_track captions edit end_card mute_test qa'.split(' ');
 const gateIds = 'continuity mouth_sync caption_timing dead_air tail shot_length words_per_second mute_test orientation black_corners eyes'.split(' ');
 check('format descriptors and unique IDs', () => {
@@ -82,6 +133,11 @@ for (const f of formats.value) {
     assert.deepEqual(p.stages.map(s => s.id), f.stages); assert.deepEqual(p.qaGates, f.qaGates);
     assert.equal(p.policyRisk, f.policyRisk); assert.deepEqual(p.riskNotes, f.riskNotes);
     assert.deepEqual(p.total, f.estimatedCostUsd);
+    assert.deepEqual(p.reviewChecklist, f.feedbackRules.map(id => {
+      const { title, check } = qa.value.find(r => r.id === id);
+      return { id, title, check, status: 'NOT CHECKED' };
+    }));
+    assert.equal(p.costRatchet, costExpected);
     for (const key of ['low', 'high']) assert.equal(p.total[key], Math.round(p.stages.reduce((n, s) => n + s.estimatedCostUsd[key], 0) * 1000) / 1000);
     assert.deepEqual(cli('plan', '--format', f.id, '--site', 'demo', '--dry-run').value, p);
   });
@@ -178,7 +234,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { templates, templateProvider, guardCost, selectFor, readScores, writeScores } from './src/index.js';
 const { listFormats, getFormat, planFormat } = await import('./src/index.js');
-const before = listFormats(); const changed = getFormat('sitcom'); changed.stages.length = 0;
+const { listRules, getRule, checklistFor } = await import('./src/qa/index.js');
+const rulesBefore = listRules(); const changedRule = getRule('R1'); changedRule.applies.length = 0;
+const changedRules = listRules(); changedRules[0].check = 'changed';
+assert.deepEqual(listRules(), rulesBefore);
+assert.throws(() => getRule('missing'), /Unknown QA rule/);
+assert.throws(() => checklistFor({ feedbackRules: ['missing'] }), /Unknown QA rule/);
+const before = listFormats();
+assert.deepEqual(checklistFor(getFormat('sitcom')), planFormat({ format: 'sitcom', site: 'demo' }).reviewChecklist); const changed = getFormat('sitcom'); changed.stages.length = 0;
 assert.deepEqual(listFormats(), before);
 const input = Object.freeze({ format: 'sitcom', site: 'demo' });
 const result = planFormat(input); result.stages[0].provider.model = 'mutated';
@@ -258,9 +321,9 @@ try {
   check('MCP initialize', () => assert.equal(init.result.protocolVersion, '2024-11-05'));
   server.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
   const list = await request('tools/list');
-  check('MCP seven tools', () => assert.equal(list.result.tools.length, 7));
+  check('MCP nine tools', () => assert.equal(list.result.tools.length, 9));
   for (const [name, args, expected] of [['list-templates', {}, templates.value], ['list-hooks', {}, hooks.value],
-    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...formatCases, ...attachedLintCases]) {
+    ['lint', { copy: 'Browse listings' }, safe.value], ['plan', {}, plan.value], ...qaCases, ...formatCases, ...attachedLintCases]) {
     const response = await request('tools/call', { name, arguments: args });
     check('MCP parity ' + name, () => assert.deepEqual(JSON.parse(response.result.content[0].text), expected));
   }
@@ -270,6 +333,7 @@ try {
     check('MCP format rejects ' + JSON.stringify(args), () => { assert.equal(r.result.isError, true); if (args.id === 'missing' || args.format === 'missing') assert.match(r.result.content[0].text, /Unknown format/); });
   }
   for (const [name, args, argv] of [
+    ['get_qa_rule', {}, ['qa-rules', 'show']],
     ['get_format', {}, ['formats', 'show']], ['plan_format', { format: 'sitcom' }, ['plan', '--format', 'sitcom']],
     ['plan_format', { format: 'sitcom', site: 'demo', apply: true }, ['plan', '--format', 'sitcom', '--site', 'demo', '--apply']],
     ['plan', { apply: true }, ['plan', '--apply']]]) {
@@ -288,6 +352,11 @@ try {
       assert.deepEqual(JSON.parse(r.result.content[0].text), expected.value);
     });
   }
+  const missingRule = await request('tools/call', { name: 'get_qa_rule', arguments: { id: 'missing' } });
+  check('MCP unknown QA rule', () => {
+    assert.equal(missingRule.result.isError, true);
+    assert.equal(missingRule.result.content[0].text, cli('qa-rules', 'show', 'missing').value.error);
+  });
   const oversized = JSON.stringify({ jsonrpc: '2.0', id: null, method: 'ping', padding: 'x'.repeat(65536) });
   const large = await raw(oversized, null, 'oversized frame');
   check('MCP frame limit', () => {
@@ -322,7 +391,7 @@ try {
   check('npm pack contents', () => {
     assert.equal(packed.status, 0, packed.stderr);
     const files = Object.values(JSON.parse(packed.stdout))[0].files.map(f => f.path);
-    for (const file of ['LICENSE', 'README.md', 'bin/agentic-ads', 'bin/agentic-ads-mcp', 'src/hooks/library.json', 'src/formats/index.js', 'src/formats/library.json']) assert.ok(files.includes(file));
+    for (const file of ['LICENSE', 'README.md', 'bin/agentic-ads', 'bin/agentic-ads-mcp', 'src/hooks/library.json', 'src/formats/index.js', 'src/formats/library.json', 'src/qa/index.js', 'src/qa/rules.json']) assert.ok(files.includes(file));
     assert.ok(files.every(f => !f.startsWith('test/')));
   });
   const linked = join(packDir, 'agentic-ads');

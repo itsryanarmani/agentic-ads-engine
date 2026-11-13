@@ -1,3 +1,4 @@
+import { checklistFor, costRatchet } from '../qa/index.js';
 import { readFileSync } from 'node:fs';
 const library = JSON.parse(readFileSync(new URL('./library.json', import.meta.url), 'utf8'));
 const costs = ['free', 'cheap', 'mid', 'expensive'], risks = ['low', 'medium', 'high'];
@@ -28,7 +29,8 @@ export function planFormat(input = {}) {
   const stages = f.stages.map(id => ({ id, provider: f.providers[id], estimatedCostUsd: f.providers[id].estimatedCostUsd }));
   const sum = key => Math.round(stages.reduce((n, s) => n + s.estimatedCostUsd[key], 0) * 1000) / 1000;
   return { format: f.id, site: input.site, goal, dryRun: true, applied: false, spendUsd: 0, stages,
+    reviewChecklist: checklistFor(f), costRatchet,
     qaGates: f.qaGates, policyRisk: f.policyRisk, riskNotes: f.riskNotes,
     total: { low: sum('low'), high: sum('high'), note: f.estimatedCostUsd.note },
-    warnings: ['Plan only; no providers or QA checks run.', 'Historical source review dates are not current price verification.'] };
+    warnings: ['Plan only; no providers or QA checks run.', 'NOT CHECKED blocks shipping. Record PASS or FAIL with a measured value. Voice fit and sound fit need the owner’s ear.', 'Historical source review dates are not current price verification.'] };
 }
