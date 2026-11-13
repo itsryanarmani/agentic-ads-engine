@@ -2,7 +2,7 @@
   {
     "id": "screen-voiceover",
     "kinds": ["captions"],
-    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18"],
+    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18", "R19", "R23"],
     "name": "Screen recording + voiceover",
     "description": "Record a real or generic checklist UI with timed narration.",
     "aspectRatios": ["9:16"],
@@ -21,7 +21,7 @@
   {
     "id": "text-broll",
     "kinds": ["captions"],
-    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18"],
+    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18", "R19", "R23"],
     "name": "Text over b-roll",
     "description": "Animate exact caption cards over supplied moving footage.",
     "aspectRatios": ["9:16"],
@@ -40,7 +40,7 @@
   {
     "id": "whiteboard",
     "kinds": ["captions"],
-    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18"],
+    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18", "R19", "R23"],
     "name": "Whiteboard doodle",
     "description": "Draw SVG ideas to narration word times.",
     "aspectRatios": ["9:16"],
@@ -59,7 +59,7 @@
   {
     "id": "stickman",
     "kinds": ["captions", "story", "character"],
-    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R17", "R18"],
+    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R17", "R18", "R19", "R20", "R23", "R26"],
     "name": "Stickman explainer",
     "description": "Animate a shared SVG character through a problem and answer.",
     "aspectRatios": ["9:16"],
@@ -78,7 +78,7 @@
   {
     "id": "pov",
     "kinds": ["captions", "story", "character"],
-    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R17", "R18"],
+    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R17", "R18", "R19", "R20", "R23", "R26"],
     "name": "POV discovery",
     "description": "Use consistent first-person clips with a title and checklist reveal.",
     "aspectRatios": ["9:16"],
@@ -97,7 +97,7 @@
   {
     "id": "telestrator",
     "kinds": ["captions"],
-    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18"],
+    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18", "R19", "R23"],
     "name": "Telestrator annotation",
     "description": "Circle relevant UI details with word-timed SVG strokes.",
     "aspectRatios": ["9:16"],
@@ -116,7 +116,7 @@
   {
     "id": "before-after",
     "kinds": ["captions", "story"],
-    "feedbackRules": ["R1", "R2", "R5", "R6", "R7", "R9", "R10", "R12", "R14", "R17", "R18"],
+    "feedbackRules": ["R1", "R2", "R5", "R6", "R7", "R9", "R10", "R12", "R14", "R17", "R18", "R19", "R20", "R23", "R26"],
     "name": "Before and after",
     "description": "Wipe from confusing paperwork to an actual checklist.",
     "aspectRatios": ["9:16"],
@@ -135,7 +135,7 @@
   {
     "id": "news-parody",
     "kinds": ["captions"],
-    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18"],
+    "feedbackRules": ["R1", "R6", "R7", "R10", "R12", "R14", "R17", "R18", "R19", "R23"],
     "name": "News parody",
     "description": "Use branded news cards with sourced facts and narration.",
     "aspectRatios": ["9:16"],
@@ -154,7 +154,7 @@
   {
     "id": "lo-fi",
     "kinds": ["captions", "story", "character", "lo-fi"],
-    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R16", "R17", "R18"],
+    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R16", "R17", "R18", "R19", "R20", "R23", "R26"],
     "name": "Handheld lo-fi UGC",
     "description": "Use synthetic handheld scenes and narration with fast reaction cuts.",
     "aspectRatios": ["9:16"],
@@ -173,7 +173,7 @@
   {
     "id": "sitcom",
     "kinds": ["captions", "story", "character", "dialogue"],
-    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", "R17", "R18"],
+    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12", "R13", "R14", "R15", "R17", "R18", "R19", "R20", "R21", "R22", "R23", "R26"],
     "name": "Multi-camera sitcom",
     "description": "Cut fictional dialogue between shared sets, angles, and silent reactions.",
     "aspectRatios": ["9:16"],
@@ -192,7 +192,7 @@
   {
     "id": "storytime",
     "kinds": ["captions", "story", "character"],
-    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R17", "R18"],
+    "feedbackRules": ["R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R12", "R14", "R15", "R17", "R18", "R19", "R20", "R23", "R26"],
     "name": "Storytime twist",
     "description": "A fictional narrator moves from confession to checklist payoff.",
     "aspectRatios": ["9:16"],
@@ -211,7 +211,7 @@
   {
     "id": "talking-object",
     "kinds": ["captions", "character", "speech"],
-    "feedbackRules": ["R1", "R3", "R4", "R6", "R7", "R8", "R10", "R11", "R12", "R14", "R15", "R17", "R18"],
+    "feedbackRules": ["R1", "R3", "R4", "R6", "R7", "R8", "R10", "R11", "R12", "R14", "R15", "R17", "R18", "R19", "R20", "R23", "R26"],
     "name": "Talking checklist",
     "description": "Animate an illustrated object mouth to narration.",
     "aspectRatios": ["9:16"],

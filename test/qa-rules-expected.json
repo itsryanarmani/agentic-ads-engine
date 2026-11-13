@@ -2,7 +2,7 @@
   {
     "id": "R1",
     "title": "Wild emotional hook in the first second.",
-    "check": "Watch 0 to 1 s with sound off. Record what frame 0.0 s shows. It must be a strong emotion or an odd event.",
+    "check": "Watch 0 to 1 s with sound off. Record what frame 0.0 s shows. It must be a strong emotion or an odd event. In a format with a person, R20 applies.",
     "origin": "Round 3 hook was \"not intriguing\".",
     "severity": "blocking",
     "applies": [
@@ -11,7 +11,7 @@
   },
   {
     "id": "R2",
-    "title": "Cause comes before effect on screen. Show the action, then the result, then who reacts.",
+    "title": "Cause comes before effect on screen. Show the action, then the result, then who reacts. In a format with a person, the reaction face of R20 comes first. Then the order is action, result, reaction, all by 3 s.",
     "check": "Step through 0 to 3 s. No character appears without a reason. No object is already broken.",
     "origin": "Sitcom: door fell, people appeared at 0:02.",
     "severity": "blocking",
@@ -22,7 +22,7 @@
   {
     "id": "R3",
     "title": "Change the camera angle, not only the zoom.",
-    "check": "Look at the frames: the scene-cut filter cannot see a zoom. About one new angle or pose every 2.5 s. Cuts differ in side, height or pose.",
+    "check": "Look at the frames: the scene-cut filter cannot see a zoom. About one new angle or pose every 2.5 s. Cuts differ in height, pose or distance. A side change stays on one side of the 180-degree line (R21).",
     "origin": "\"Different left and right views, not slow zooms.\"",
     "severity": "blocking",
     "applies": [
@@ -178,6 +178,86 @@
     "severity": "blocking",
     "applies": [
       "all"
+    ]
+  },
+  {
+    "id": "R19",
+    "title": "Do not show an event the video model cannot render. Show damage another way.",
+    "check": "Render one clip first. Look at 3 frames of the event. No duplicate objects (two doors), no melting. If it fails, change the beat (cracking wall, falling plaster).",
+    "origin": "\"No crash, two doors, AI artifact.\"",
+    "severity": "blocking",
+    "applies": [
+      "all"
+    ]
+  },
+  {
+    "id": "R20",
+    "title": "In a format with a person, the first frame is that person's reaction face. The cause follows in the next shot or two (see R2). This replaces the 0.0 s check in R1 for those formats.",
+    "check": "Frame 0.0 s: a face, eyes and mouth readable, emotion matches the hook. The cause is on screen by 3 s.",
+    "origin": "\"Shocked face in the first frame.\"",
+    "severity": "blocking",
+    "applies": [
+      "character"
+    ]
+  },
+  {
+    "id": "R21",
+    "title": "Keep screen direction. Each person stays on the same side of the frame in every shot. Change the angle on one side of the 180-degree line. Do not cross it.",
+    "check": "List left/right per shot for each person. No swap, including cutaways.",
+    "origin": "Street interview: host moved from right to left.",
+    "severity": "blocking",
+    "applies": [
+      "dialogue"
+    ]
+  },
+  {
+    "id": "R22",
+    "title": "A conversation looks like one: eyelines, head turns, small hand gestures, a slow push-in on the punchline. Do the push-in in the edit as a crop. Ask the model for small gestures only.",
+    "check": "Per talking shot: where does the person look? Count eyeline-matched reverse shots (at least 1). Note the crop push-in. OWNER CHECK for how natural it looks.",
+    "origin": "\"Talk as if to someone, more hand movement, zoom in on the guy.\"",
+    "severity": "blocking",
+    "applies": [
+      "dialogue"
+    ]
+  },
+  {
+    "id": "R23",
+    "title": "Captions never look jumbled.",
+    "check": "Compile `swiftc -O ocr.swift` (macOS Vision, `VNRecognizeTextRequest`, accurate, language correction off). Run it on one frame per caption from the final render. Retry once on an `e5rt` crash. Character error rate (edit distance divided by expected length, upper case, spaces collapsed) 0.10 or less. Do not run `swift ocr.swift` (it hangs).",
+    "origin": "\"Some letters get jumbled.\"",
+    "severity": "blocking",
+    "applies": [
+      "captions"
+    ]
+  },
+  {
+    "id": "R24",
+    "title": "Show the tool of the format. A street interview shows the microphone in the host's hand. Name the mic in the motion prompt and include it in the R15 frame comparison.",
+    "check": "Frame check: mic visible in every host shot, same shape in each.",
+    "origin": "Interview had no visible mic.",
+    "severity": "blocking",
+    "applies": [
+      "interview"
+    ]
+  },
+  {
+    "id": "R25",
+    "title": "A horror-comic variant needs a scare beat: something moves behind a door, a sting, a reaction. Then it resolves as a joke.",
+    "check": "Mark the beat on the timeline. A sting starts within 0.2 s of the beat, then a reaction shot. OWNER CHECK for how scary it feels.",
+    "origin": "\"Feel a little bit scared.\"",
+    "severity": "blocking",
+    "applies": [
+      "horror"
+    ]
+  },
+  {
+    "id": "R26",
+    "title": "A personal story has a clear hook: the loss, the place, the trust that broke, the surprise. The offer is on the end card. The narrator never says the product worked. See R9 and R17.",
+    "check": "Caption read: one sentence per beat, in that order. No line claims a result.",
+    "origin": "\"I spent all my savings on this house ... a slick agent gave me a lien ... someone lives there.\"",
+    "severity": "blocking",
+    "applies": [
+      "story"
     ]
   }
 ]
