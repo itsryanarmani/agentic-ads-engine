@@ -1,5 +1,12 @@
 import { readFileSync } from 'node:fs';
 const rules = JSON.parse(readFileSync(new URL('./rules.json', import.meta.url), 'utf8'));
+const gates = JSON.parse(readFileSync(new URL('./gates.json', import.meta.url), 'utf8'));
+export function gateChecklistFor(format) {
+  return format.qaGates.map(id => {
+    if (!Object.hasOwn(gates, id)) throw new Error('Unknown QA gate: ' + id);
+    return { id, check: gates[id], status: 'NOT CHECKED' };
+  });
+}
 export function listRules() { return structuredClone(rules); }
 export function getRule(id) {
   const rule = rules.find(r => r.id === id);
