@@ -6,15 +6,20 @@ import { templates } from '../templates/index.js';
  */
 export function guardCost(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid cost or cap');
+  const values = {};
   for (const key of ['costMinor', 'adSpentMinor', 'monthSpentMinor', 'perAdMinor', 'perMonthMinor']) {
     if (!Object.hasOwn(input, key)) throw new Error(`Invalid cost or cap: ${key} must be an own property`);
-    if (!Number.isSafeInteger(input[key]) || input[key] < 0) throw new Error('Invalid cost or cap');
+    const value = input[key];
+    values[key] = value;
+    if (!Number.isSafeInteger(value) || value < 0) throw new Error('Invalid cost or cap');
   }
   if ('apply' in input && !Object.hasOwn(input, 'apply')) throw new Error('Invalid cost or cap: apply must be an own property');
+  const { costMinor, adSpentMinor, monthSpentMinor, perAdMinor, perMonthMinor } = values;
+  const apply = input.apply;
   const reasons = [];
-  if (input.costMinor > 0 && input.apply !== true) reasons.push('apply_required');
-  if (input.costMinor > input.perAdMinor - input.adSpentMinor) reasons.push('per_ad_cap');
-  if (input.costMinor > input.perMonthMinor - input.monthSpentMinor) reasons.push('monthly_cap');
+  if (costMinor > 0 && apply !== true) reasons.push('apply_required');
+  if (costMinor > perAdMinor - adSpentMinor) reasons.push('per_ad_cap');
+  if (costMinor > perMonthMinor - monthSpentMinor) reasons.push('monthly_cap');
   return { ok: reasons.length === 0, reasons };
 }
 const escape = value => value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);

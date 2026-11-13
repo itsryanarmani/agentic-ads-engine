@@ -1,9 +1,11 @@
+// This lint is a warning tool, not legal advice. It misses cases.
+// Every result still needs a person to review it.
 // Normalize invisible separators and common Latin lookalikes before all checks.
-const lookalikes = { а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', х: 'x', у: 'y', і: 'i', ј: 'j', ѕ: 's', к: 'k', м: 'm', т: 't', в: 'b', н: 'h', ι: 'i', α: 'a', ε: 'e', ο: 'o', ρ: 'p', χ: 'x', υ: 'y', κ: 'k', τ: 't', ν: 'v' };
+const lookalikes = { ı: 'i', а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', х: 'x', у: 'y', і: 'i', ј: 'j', ѕ: 's', к: 'k', м: 'm', т: 't', в: 'b', н: 'h', ι: 'i', α: 'a', ε: 'e', ο: 'o', ρ: 'p', χ: 'x', υ: 'y', κ: 'k', τ: 't', ν: 'v' };
 function normalize(copy) {
   return copy.normalize('NFKC').toLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
     .replace(/[\u00ad\u034f\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff]/g, '')
-    .replace(/[аеорсхуіјѕкмтвнαεορχυκτνι]/g, c => lookalikes[c]);
+    .replace(/[ıаеорсхуіјѕкмтвнαεορχυκτνι]/g, c => lookalikes[c]);
 }
 function hasContact(text) {
   // Each token/run is scanned once. Do not retry an unbounded suffix at every character.
@@ -26,22 +28,31 @@ function hasHousing(text) {
   return /\b(?:homes?|housing|houses?|condos?|condominiums?|apartments?|leases?|leasing|renting|rented|townhouses?|duplex(?:es)?|landlords?|tenants?|bedrooms?|studios?|\d+br|flats?|real estate|foreclosures?|rent(?:al|als)?|propert(?:y|ies)|mortgages?|auctions?|listings?)\b/.test(subject);
 }
 // Bounded connectors keep cues attached to people, without scanning arbitrary prose.
-const gap = '[ -]+';
-const people = '(?:(?:tenants?|residents?|applicants?|people|households?|roommates?|families|with|or|and|pets|grad|job)' + gap + '){0,4}';
-const cueBefore = '(?:only|no|not|prefer|preferred|ideal for|perfect for|must be|must have|exclude|excluding|not suitable for)';
-const cueAfter = '(?:only|preferred|welcome|wanted|required|excluded|exclusive|not welcome|not accepted|not allowed|not permitted|prohibited|banned)';
-function preference(subject) {
-  return new RegExp('\\b(?:' + cueBefore + gap + people + '(?:' + subject + ')|(?:' + subject + ')' + gap + people + cueAfter + ')\\b');
+const gap = '[\\s-]+';
+const spaced = pattern => pattern.replaceAll(' ', gap);
+const people = spaced('(?:(?:tenants?|residents?|applicants?|people|persons?|households?|roommates?|family|families|professionals?|with|or|and|pets|grad|job|on|are|is) ){0,4}');
+const modifier = spaced('(?:(?:a|an) )?(?:(?:young|single|mature|professional|traditional|able bodied) )?');
+const cueBefore = spaced('(?:only|no|not|not for|wanted|prefer|preferred|ideal for|great for|perfect for|must be|must have|must speak|exclude|excluding|not suitable for)');
+const cueAfter = spaced('(?:only|preferred|wanted|required|excluded|exclusive|need not apply|not welcome|not accepted|not allowed|not permitted|prohibited|banned)');
+function preference(subject, welcome = true) {
+  const group = spaced(subject);
+  const after = welcome ? '(?:' + cueAfter + '|welcome)' : cueAfter;
+  return new RegExp('\\b(?:' + cueBefore + gap + people + modifier + '(?:' + group + ')|(?:' + group + ')' + gap + people + after + ')\\b');
 }
 const housingRules = [
-  ['targeting_age', preference('young(?: professionals?| adults?)?|seniors?|retirees?|millennials?|students?|mature|elderly'), 'Remove age or student restrictions and preferences.'],
-  ['targeting_familial_status', preference('children|kids|families|adults?|empty nesters'), 'Remove family-status restrictions and preferences.'],
-  ['targeting_marital_status', preference('singles?|a bachelor|bachelors?|a couple|couples?|married|unmarried|divorced'), 'Remove marital-status restrictions and preferences.'],
+  ['targeting_age', preference('young(?: professionals?| adults?)?|seniors?|retirees?|millennials?|students?|mature|elderly|teens?|teenagers?|toddlers?|babies|infants?'), 'Remove age or student restrictions and preferences.'],
+  ['targeting_familial_status', preference('children|child|kids|kiddos|family|families|parents?|mothers?|fathers?|pregnant', false), 'Remove family-status restrictions and preferences.'],
+  ['targeting_familial_status', preference('adults?|empty nesters'), 'Remove family-status restrictions and preferences.'],
+  ['targeting_marital_status', preference('singles?|bachelors?|couples?|married|unmarried|divorced'), 'Remove marital-status restrictions and preferences.'],
   ['targeting_religion', preference('christians?|muslims?|jewish|jews?|hindus?|buddhists?|catholics?|protestants?|believers|religious'), 'Remove religious targeting or preferences.'],
-  ['targeting_income', preference('section[ -]+(?:8|eight)|vouchers?|hud|housing assistance|public assistance|income source|job income'), 'Remove source-of-income restrictions or preferences.'],
-  ['targeting_sex', preference('men|women|males?|females?|boys|girls|sex|gender|gay|straight'), 'Remove sex or gender restrictions and preferences.'],
-  ['targeting_origin', preference('americans?|canadians?|chinese|indians?|mexicans?|british|french|arabs?|hispanics?|asians?|citizens?|native speakers?|english(?: speakers?)?|immigrants?|foreigners?|national origin|ethnicity|race|whites?|blacks?|minorities'), 'Remove race or national-origin restrictions and preferences.'],
-  ['targeting_disability', preference('disabled|disabilities|wheelchairs?(?: users?)?|service animals?|able[ -]bodied|non[ -]disabled|wheelchair accessible'), 'Remove disability restrictions and preferences.'],
+  ['targeting_income', preference('section (?:8|eight)|vouchers?|hud|housing assistance|public assistance|income source|job income|welfare|ssi|ssdi|disability income|social security'), 'Remove source-of-income restrictions or preferences.'],
+  ['targeting_sex', preference('men|women|males?|females?|boys?|girls?|gentlemen|ladies|sex|gender|gay|straight'), 'Remove sex or gender restrictions and preferences.'],
+  ['targeting_origin', preference('americans?|canadians?|chinese|indians?|mexicans?|british|french|arabs?|hispanics?|latinos?|latinas?|africans?|asians?|(?:us )?citizens?|native speakers?|english(?: speakers?)?|immigrants?|foreigners?|national origin|ethnicity|race|whites?|blacks?|minorities'), 'Remove race or national-origin restrictions and preferences.'],
+  ['targeting_disability', preference('disabled|disability|disabilities|mentally ill|wheelchairs?(?: users?)?|service animals?|able bodied|non disabled|wheelchair accessible', false), 'Remove disability restrictions and preferences.'],
+  // Indirect occupancy language needs review even without an explicit restriction.
+  ['targeting_familial_status', /\b(?:traditional[\s-]+family[\s-]+values[\s-]+neighbou?rhood|adult[\s-]+community|only[\s-]+one[\s-]+child)\b/, 'Review possible family-status or occupancy preferences.', 'warning'],
+  ['targeting_religion', /\b(?:christian|muslim|jewish|hindu|buddhist|catholic|protestant)[\s-]+home\b/, 'Review possible religious occupancy preferences.', 'warning'],
+  ['targeting_disability', /\bmust[\s-]+be[\s-]+able[\s-]+to[\s-]+climb[\s-]+stairs\b/, 'Review possible disability restrictions in stair-access requirements.', 'warning'],
   // These phrases describe eligibility or preferred occupants, rather than a bare class word.
   ['targeting_age', /\b(?:(?:over|under|older than|younger than)[ -]+\d{1,3}[ -]+(?:community|residents?|tenants?|only)|(?:\d{1,3}|fifty[ -]five)[ -]*(?:\+|plus\b|(?:and|or)[ -]+(?:over|older|up)\b|years?[ -]+(?:old|(?:and|or)[ -]+(?:over|older))\b)|senior living|retirement community)\b/, 'Remove age eligibility language.'],
   ['targeting_age', /\b\d{1,3}\+(?=[ -]+(?:community|residents?|tenants?|only)\b)/, 'Remove age eligibility language.'],
@@ -60,6 +71,8 @@ export function lint(copy, options = {}) {
   const { category = 'housing' } = options;
   if (!['housing', 'none'].includes(category)) throw new Error('Unsupported category');
   const text = normalize(copy);
+  // Preserve punctuation for contact and date checks. Normalize it only for targeting.
+  const targetingText = text.replace(/\bu\.s\.(?=[\s_.-])/g, 'us').replace(/[_.]/g, ' ');
   const findings = [];
   const add = (code, message, severity = 'error') => findings.push({ code, severity, message });
   if (!text.trim()) add('empty', 'Supply ad copy.');
@@ -74,9 +87,11 @@ export function lint(copy, options = {}) {
     ['news', /\b(breaking(?![ -]down\b)|news alert)\b/, 'News framing needs review and a clear ad disclosure.'],
     ['staging', /\b(before.{0,12}after|virtually staged|virtual staging|ai.staged)\b/, 'Verify the source images and staging disclosure.'],
   ];
-  for (const [code, pattern, message] of rules) if (pattern.test(text)) add(code, message);
+  for (const [code, pattern, message, severity] of rules) {
+    if (pattern.test(code.startsWith('targeting_') ? targetingText : text)) add(code, message, severity);
+  }
   if (hasContact(text)) add('private_data', 'Remove contact data.');
   if (hasPlaceholder(text)) add('placeholder', 'Replace unresolved slots before review.');
-  add('human_review', 'Check facts, consent, disclosures, and platform rules before use.', 'warning');
+  add('human_review', 'This lint is a warning tool, not legal advice. It misses cases. Every result needs a person to review facts, consent, disclosures, and platform rules.', 'warning');
   return { status: findings.some(f => f.severity === 'error') ? 'blocked' : 'review', category, findings };
 }
