@@ -5,6 +5,7 @@ import { templates } from '../templates/index.js';
  * Existing spend must include reservations and uncertain charges.
  */
 export function guardCost(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid cost or cap');
   for (const key of ['costMinor', 'adSpentMinor', 'monthSpentMinor', 'perAdMinor', 'perMonthMinor']) {
     if (!Number.isSafeInteger(input[key]) || input[key] < 0) throw new Error('Invalid cost or cap');
   }
@@ -20,7 +21,9 @@ export const templateProvider = {
   id: 'html-template-stub',
   capabilities: () => ({ formats: ['text/html'], aspectRatios: ['4:5', '9:16'], imageRendering: false }),
   estimate: () => ({ costMinor: 0, currency: 'USD', confidence: 'exact' }),
-  run({ template, ratio = '4:5', slots, brand = {} }) {
+  run(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid provider input');
+    const { template, ratio = '4:5', slots, brand = {} } = input;
     const descriptor = templates.find(t => t.id === template);
     if (!descriptor || !descriptor.aspectRatios.includes(ratio)) throw new Error('Invalid template or ratio');
     if (!slots || typeof slots !== 'object' || Array.isArray(slots)) throw new Error('Invalid slots');
@@ -35,7 +38,7 @@ export const templateProvider = {
     const name = brand.name ?? 'Demo';
     if (typeof name !== 'string' || !name.trim() || name.length > 80) throw new Error('Invalid brand name');
     const body = descriptor.slots.map(slot => {
-      const value = slots[slot.name];
+      const value = Object.hasOwn(slots, slot.name) ? slots[slot.name] : undefined;
       if (typeof value !== 'string' || !value.trim() || value.length > slot.maxChars) throw new Error('Invalid required slot');
       return `<section data-slot="${slot.name}">${escape(value)}</section>`;
     }).join('');
