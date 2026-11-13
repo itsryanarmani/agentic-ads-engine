@@ -499,7 +499,7 @@ async function apiStart(env = {}, options = []) {
     finally { clearTimeout(timer); }
   } };
 }
-const apiToken = 'api-secret-739f0c';
+const apiToken = 'api-secret-739f0c-0123456789abcdef-ZZ';
 async function apiCall(api, path, expected, options = {}) {
   const response = await fetch(api.base + path, { ...options, signal: AbortSignal.timeout(15000) });
   const text = await response.text();
@@ -556,7 +556,7 @@ try {
     let response = '';
     socket.setTimeout(14000, () => { socket.destroy(); reject(new Error('API timeout missing')); });
     socket.on('error', reject); socket.on('data', x => { response += x; });
-    socket.on('connect', () => socket.write('POST /v1/lint HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: 10\r\n\r\n{'));
+    socket.on('connect', () => socket.write(`POST /v1/lint HTTP/1.1\r\nHost: 127.0.0.1:${new URL(api.base).port}\r\nContent-Type: application/json\r\nContent-Length: 10\r\n\r\n{`));
     socket.on('close', () => resolve({ response, elapsed: Date.now() - start }));
   });
   check('API ten-second request timeout', () => {
@@ -584,6 +584,23 @@ try {
   await apiCall(secured, '/v1/plan', 401, { method: 'OPTIONS', headers: { origin: 'https://admin.example' } });
 } finally { await secured.stop(); }
 check('API token absent from logs', () => assert.ok(!secured.output().includes(apiToken)));
+const { request: httpRequest } = await import('node:http');
+const hostApi = await apiStart();
+const hostStatus = host => new Promise((resolve, reject) => {
+  const url = new URL(hostApi.base);
+  const req = httpRequest({ host: '127.0.0.1', port: url.port, path: '/health', headers: { host } }, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+  req.on('error', reject); req.end();
+});
+for (const [host, expected] of [['evil.com', 403], [`evil.com:${new URL(hostApi.base).port}`, 403], [`127.0.0.1:${new URL(hostApi.base).port}`, 200], [`localhost:${new URL(hostApi.base).port}`, 200]]) {
+  const status = await hostStatus(host);
+  check('API Host header ' + host, () => assert.equal(status, expected, 'API Host header ' + host));
+}
+await hostApi.stop();
+const weak = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', '--port', '0'], { encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: 'short-token' } });
+check('API startup rejects a short token', () => {
+  assert.equal(weak.status, 1, 'short token accepted'); assert.equal((weak.stdout + weak.stderr).trim().split('\n').length, 1);
+  assert.match(weak.stdout + weak.stderr, /32 or more characters/);
+});
 for (const options of [['--host', '0.0.0.0'], ['--port', '-1'], ['--port', 'NaN'], ['--port', '65536'], ['--host', ''], ['--port', '1', '--port', '2']]) {
   const r = spawnSync(process.execPath, ['bin/agentic-ads', 'serve', ...options], {
     encoding: 'utf8', timeout: 3000, env: { ...process.env, AGENTIC_ADS_TOKEN: '' },

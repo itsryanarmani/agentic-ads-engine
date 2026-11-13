@@ -14,6 +14,8 @@ if (baseline.error || baseline.status !== 0) {
 const faults = [
   ['skip token check', "if (token && !timingSafeEqual", "if (false && !timingSafeEqual", /API status \/health/],
   ['raise body limit', 'if (size > 65536)', 'if (size > 131072)', /API status \/v1\/lint/],
+  ['skip host check', 'if (!hostOk) { send(403', 'if (false) { send(403', /API Host header/],
+  ['allow short token', "token.length < 32", "token.length < 0", /short token/],
   ['allow apply', "if (hasApply(args)) { send(400, { error: 'Apply is unavailable' }); return; }", 'if (hasApply(args)) delete args.apply;', /API status \/v1\/plan/],
 ];
 for (const [name, from, to, failure] of faults) {

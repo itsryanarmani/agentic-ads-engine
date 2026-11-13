@@ -18,6 +18,8 @@ export async function serve(argv) {
   const token = process.env.AGENTIC_ADS_TOKEN || '';
   const loopback = options.host === 'localhost' || options.host === '::1' || (isIP(options.host) === 4 && options.host.startsWith('127.'));
   if (!loopback && !token) throw new Error('Non-loopback host requires AGENTIC_ADS_TOKEN');
+  if (token && token.length < 32) throw new Error('AGENTIC_ADS_TOKEN needs 32 or more characters');
+  let boundPort = 0;
   // Pin localhost to loopback rather than trusting hostname resolution.
   if (options.host === 'localhost') options.host = '127.0.0.1';
   const expected = digest('Bearer ' + token);
@@ -27,6 +29,8 @@ export async function serve(argv) {
     catch { throw new Error('Invalid CORS origin'); }
   }
   const server = createServer({ requestTimeout: 10000, headersTimeout: 10000, connectionsCheckingInterval: 1000 }, (req, res) => {
+    // Without a token, accept only loopback Host values. This blocks DNS rebinding.
+    const hostOk = token || [`127.0.0.1:${boundPort}`, `localhost:${boundPort}`, `[::1]:${boundPort}`].includes(String(req.headers.host).toLowerCase());
     const timer = setTimeout(() => { send(408, { error: 'Request timeout' }); req.resume(); }, 10000);
     res.on('close', () => clearTimeout(timer));
     function send(status, value, headers = {}) {
@@ -43,6 +47,7 @@ export async function serve(argv) {
     }
     if (token && !timingSafeEqual(digest(req.headers.authorization ?? ''), expected)) { send(401, { error: 'Unauthorized' }); req.resume(); return; }
     let url;
+    if (!hostOk) { send(403, { error: 'Forbidden host' }); req.resume(); return; }
     try { url = new URL(req.url, 'http://localhost'); } catch { send(400, { error: 'Invalid URL' }); return; }
     const routes = { '/health': null, '/v1/formats': 'list_formats', '/v1/hooks': 'list-hooks',
       '/v1/templates': 'list-templates', '/v1/qa-rules': 'list_qa_rules', '/v1/lint': 'lint', '/v1/plan': 'plan_format' };
@@ -92,6 +97,7 @@ export async function serve(argv) {
     server.once('error', () => reject(new Error('Unable to start HTTP server')));
     server.listen(options, resolve);
   });
+  boundPort = server.address().port;
   console.log(JSON.stringify({ status: 'listening', port: server.address().port }));
   const stop = () => { server.close(); server.closeAllConnections(); };
   process.once('SIGTERM', stop); process.once('SIGINT', stop);
