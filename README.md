@@ -2,24 +2,25 @@
 
 Offline tools for ad drafts. Node 20 or later. Plain JavaScript ESM with JSDoc, no build step, and zero runtime dependencies.
 
+## Install
+
+```sh
+npm install agentic-ads-engine        # library and CLI in a project
+npm install -g agentic-ads-engine     # the agentic-ads and agentic-ads-mcp commands
+```
+
 ## Quick start
 
-Run from this checkout:
-
 ```sh
-node bin/agentic-ads list-templates
-node bin/agentic-ads list-hooks
-node bin/agentic-ads lint --copy 'Browse available listings'
-node bin/agentic-ads plan --site demo --goal discovery --dry-run
-node test/e2e.mjs
+npx agentic-ads list-templates
+npx agentic-ads hooks
+npx agentic-ads lint --copy 'Browse available listings'
+npx agentic-ads plan --site demo --goal discovery --dry-run
+npx agentic-ads serve --port 8787     # HTTP API, loopback only unless AGENTIC_ADS_TOKEN is set
+npx agentic-ads-mcp                   # MCP server over stdio
 ```
 
-The package is not published by this task. To install the local package:
-
-```sh
-npm install /path/to/agentic-ads-engine
-npx agentic-ads plan
-```
+From a git checkout, use `node bin/agentic-ads ...` and run `node test/e2e.mjs` for the tests.
 
 CLI output is JSON. Exit codes: `0` for a result, `1` for invalid input, and `2` for blocked copy.
 `lint` requires `--copy`. It accepts `--category housing|none`; the default is `housing`.
