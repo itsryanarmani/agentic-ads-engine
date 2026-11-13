@@ -1,4 +1,4 @@
-// Prove three one-line QA faults fail E2E, then restore the exact file bytes.
+// Prove five one-line QA faults fail E2E, then restore the exact file bytes.
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
@@ -8,6 +8,8 @@ const faults = [
   ['drop R14', 'src/formats/library.json', s => s.replace(', "R14"', ''), /QA pinned rules: screen-voiceover/],
   ['rename R1', 'src/qa/rules.json', s => s.replace('"id": "R1"', '"id": "R99"'), /QA rule IDs/],
   ['empty check', 'src/qa/rules.json', s => s.replace(/"check": "[^"]*"/, '"check": ""'), /QA non-empty check: R1/],
+  ['change check text', 'src/qa/rules.json', s => s.replace('"check": "Look', '"check": "Watch'), /QA rule text pinned/],
+  ['soften severity', 'src/qa/rules.json', s => s.replace('"severity": "blocking"', '"severity": "advisory"'), /QA rule text pinned/],
 ];
 for (const [name, file, mutate, failure] of faults) {
   const original = await readFile(file, 'utf8');

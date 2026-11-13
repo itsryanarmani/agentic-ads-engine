@@ -15,6 +15,7 @@ function cli(...args) {
 const formats = cli('formats');
 const qa = cli('qa-rules');
 const qaExpected = JSON.parse(await readFile('test/qa-expectations.json', 'utf8'));
+const pinnedQa = JSON.parse(await readFile('test/qa-rules-expected.json', 'utf8'));
 const costExpected = [
   'Set a hard cap before you spend. One writer per spend log.',
   'Reuse faces, sets, stills, clips and voice ids from earlier videos first.',
@@ -30,6 +31,11 @@ check('QA rule catalog', () => {
     for (const key of ['title', 'check', 'origin', 'severity']) assert.ok(typeof r[key] === 'string' && r[key].trim(), `QA non-empty ${key}: ${r.id}`);
     assert.ok(r.applies.length && r.applies.every(k => typeof k === 'string' && k.trim()));
   }
+});
+check('QA rule text pinned to the skills table', () => {
+  assert.equal(qa.status, 0);
+  assert.deepEqual(qa.value, pinnedQa, 'QA rule text pinned'); // source: ad-lofi-ugc/references/owner-feedback.md
+  assert.ok(pinnedQa.every(r => r.severity === 'blocking'));
 });
 check('QA pinned formats', () => {
   assert.deepEqual(formats.value.map(f => f.id), qaExpected.map(f => f.id));
