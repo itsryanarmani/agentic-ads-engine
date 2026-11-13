@@ -171,30 +171,44 @@ try {
 `], { encoding: 'utf8', timeout: 5000 });
 check('library integration child', () => { assert.equal(integration.status, 0, integration.stderr); });
 const server = spawn(process.execPath, ['bin/agentic-ads-mcp'], { stdio: ['pipe', 'pipe', 'pipe'] });
-let stderr = ''; server.stderr.on('data', x => { stderr += x; });
-const pending = new Map(); let next = 0;
+let stderr = ''; server.stderr.on('data', x => { stderr = (stderr + x).slice(-4096); });
+const pending = new Map(); let next = 0, stopped = false, serverFailure;
+function failPending(cause) {
+  serverFailure = cause;
+  for (const waiter of pending.values()) waiter.reject(new Error(`${cause}; pending request: ${waiter.name}`));
+}
+const closed = new Promise(resolve => server.once('close', (code, signal) => {
+  stopped = true;
+  failPending(`MCP server exited: code=${code}, signal=${signal}; last stderr: ${JSON.stringify(stderr)}`);
+  resolve();
+}));
+server.on('error', error => failPending(`MCP server error: ${error.message}; last stderr: ${JSON.stringify(stderr)}`));
+// A closed pipe can emit EPIPE before close supplies the exit code and final stderr.
+server.stdin.on('error', () => {});
 const lines = createInterface({ input: server.stdout });
 lines.on('line', line => {
   const message = JSON.parse(line); const waiter = pending.get(message.id);
-  assert.ok(waiter, 'unexpected response'); pending.delete(message.id); waiter(message);
+  assert.ok(waiter, 'unexpected response'); waiter.resolve(message);
 });
-function raw(wire, id = null) {
+function raw(wire, id = null, name = 'raw frame') {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('MCP timeout')), 3000);
-    pending.set(id, value => { clearTimeout(timer); resolve(value); });
-    server.stdin.write(wire + '\n');
+    if (serverFailure) { reject(new Error(`${serverFailure}; pending request: ${name}`)); return; }
+    const finish = fn => value => { clearTimeout(timer); pending.delete(id); fn(value); };
+    const timer = setTimeout(() => pending.get(id).reject(new Error(`MCP timeout: ${name}`)), 3000);
+    pending.set(id, { name, resolve: finish(resolve), reject: finish(reject) });
+    server.stdin.write(wire.slice(0, 8)); server.stdin.write(wire.slice(8) + '\n');
   });
 }
 function request(method, params = {}) {
   const id = ++next;
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('MCP timeout')), 3000);
-    pending.set(id, value => { clearTimeout(timer); resolve(value); });
-    const wire = JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n';
-    server.stdin.write(wire.slice(0, 8)); server.stdin.write(wire.slice(8));
-  });
+  return raw(JSON.stringify({ jsonrpc: '2.0', id, method, params }), id,
+    method + (params.name ? ` (${params.name})` : ''));
 }
 try {
+  for (const method of ['tools/list', 'tools/call']) {
+    const r = await request(method, method === 'tools/call' ? { name: 'list-templates' } : {});
+    check('MCP initialize gate ' + method, () => assert.equal(r.error?.code, -32002, `${method} initialize gate`));
+  }
   const init = await request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'e2e', version: '1' } });
   check('MCP initialize', () => assert.equal(init.result.protocolVersion, '2024-11-05'));
   server.stdin.write('{"jsonrpc":"2.0","method":"notifications/initialized"}\n');
@@ -220,6 +234,23 @@ try {
       assert.match(r.result.content[0].text, args.apply ? /Apply is unavailable/ : /Missing required argument/);
     });
   }
+  for (const name of ['lint', 'plan']) {
+    const copy = 'Guaranteed profit', expected = cli(name, '--copy', copy);
+    const r = await request('tools/call', { name, arguments: { copy } });
+    check('MCP blocked copy ' + name, () => {
+      assert.equal(expected.status, 2);
+      assert.equal(r.result.isError, true, `${name} blocked copy must set isError`);
+      assert.deepEqual(JSON.parse(r.result.content[0].text), expected.value);
+    });
+  }
+  const oversized = JSON.stringify({ jsonrpc: '2.0', id: null, method: 'ping', padding: 'x'.repeat(65536) });
+  const large = await raw(oversized, null, 'oversized frame');
+  check('MCP frame limit', () => {
+    assert.equal(large.error?.code, -32600);
+    assert.equal(large.error?.message, 'Frame too large', 'MCP frame limit');
+  });
+  const recovered = await request('ping');
+  check('MCP frame recovery', () => assert.deepEqual(recovered.result, {}, 'request after oversized frame'));
   const unknown = await request('unknown');
   check('MCP method error', () => assert.equal(unknown.error.code, -32601));
   const malformed = await raw('{');
@@ -234,9 +265,9 @@ try {
   check('MCP rejects null arguments', () => assert.equal(nullArgs.result.isError, true));
   assert.equal(stderr, '');
 } finally {
-  server.stdin.end();
-  const timer = setTimeout(() => server.kill(), 1000);
-  await new Promise(resolve => server.once('close', resolve)); clearTimeout(timer); lines.close();
+  if (!stopped) server.stdin.end();
+  const timer = setTimeout(() => server.kill('SIGKILL'), 1000);
+  await closed; clearTimeout(timer); lines.close();
 }
 const packDir = await mkdtemp(join(tmpdir(), 'aae-pack-'));
 try {
