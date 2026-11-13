@@ -145,10 +145,12 @@ All formats with captions and speech require these four gates:
 | --- | --- |
 | `loudness_master` | Final file: target -14 LUFS, band -16 to -12 LUFS, true peak at or below -1 dBTP. |
 | `caption_ocr` | Final-file OCR character error rate: 0.10 or less for every caption. |
-| `voice_consistency` | Per-character pitch spread: at most 1.25 passes; above 1.25 through 1.6 needs owner review; above 1.6 fails. |
-| `stem_sfx` | Measure sync and level using separate voice and SFX stems. A mixed track cannot measure these separately. |
+| `voice_consistency` | OWNER CHECK: pitch spread above 1.25 asks a person to listen. The tool check never fails. |
+| `stem_sfx` | Use separate voice and SFX stems, with laughs left out of SFX. Supply beat times via `--cuts`. Require SFX onsets, with at least 80% within 80 ms of a cut. Cuts without SFX are fine. |
 
-Missing stems or voice mappings leave dependent checks `NOT CHECKED`. Pitch measures consistency; voice fit still needs a listener.
+Missing stems or voice mappings leave dependent checks `NOT CHECKED`. Voice fit stays an owner check.
+On our own videos, neither pitch spread nor a speaker embedding separated 1 rejected voice from 11 accepted voices.
+This is a small sample; a person must listen with the face.
 
 The new estimates describe logged reworks with reused assets. They are upper bounds, not current prices or fresh-production quotes.
 Street interview uses the $0.874 phone-style rework. Backrooms uses the $0.506 VHS rework as its stage plan.
@@ -171,9 +173,9 @@ Pass a format descriptor from `getFormat(id)` to `checklistFor`.
 Rules use `blocking` severity. `applies` names format kinds; `all` covers every format.
 Story formats include stickman, POV, before-after, lo-fi, sitcom, storytime, and the three new formats.
 Sitcom, street-interview and backrooms-dialogue have dialogue. Horror-comic has one character with speech. Street interviews use R24; horror-comic uses R25, and a Backrooms scare variant is planned as horror-comic.
-Talking-object has visible speech. All 15 formats have captions and TTS. Existing R1–R26 text and its pin remain unchanged.
+Talking-object has visible speech. All 15 formats have captions and TTS.
 
-Run `node test/mutate-qa.mjs` to verify three deliberate faults and restore the files.
+Run `node test/mutate-qa.mjs` to verify five deliberate faults and restore the files.
 Results go to `test/artifacts/qa-mutations.json` and `test/artifacts/e2e.json`.
 
 ## Hook catalog
