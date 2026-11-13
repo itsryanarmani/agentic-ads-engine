@@ -99,10 +99,10 @@ News framing, staging, and urgency also require review. Conservative checks can 
 The package does not inspect actual audience settings or implement current platform policy in full.
 
 Keep private data out of inputs. Contact-pattern checks are incomplete; they cannot reliably detect names, addresses, or secrets.
-The CLI prints supplied copy in plans. No telemetry, account integration, credentials, or network calls are included.
+The CLI prints supplied copy in plans. No telemetry, account integration, or outbound network calls are included.
 No source assets or competitor copy are bundled. Research informs the formats and disclosure needs only.
 
-The E2E script spawns both executables and a library integration process.
+The E2E script spawns the CLI, MCP server, HTTP server, and a library integration process.
 It records assertions in `test/artifacts/e2e.json`, which Git ignores and npm excludes.
 Run `npm run ci:local` before any future push. Publishing and pushing are separate operator actions.
 
@@ -184,3 +184,41 @@ Every result still requires human review. Personal savings, occupancy, interview
 Run `node test/mutate-hooks.mjs` to verify three single-line faults and restore the catalog.
 Evidence goes to `test/artifacts/hooks-mutations.json`. E2E results go to `test/artifacts/e2e.json`.
 `test/hook-expectations.json` pins every ID and housing flag; review changes to this file explicitly.
+
+## HTTP API for admin sites
+
+Start `node bin/agentic-ads serve`. The defaults are `127.0.0.1:8787`.
+Use `--host H` and `--port N` to change them. Port `0` selects an available port.
+The startup JSON reports the bound port. SIGTERM closes the server and its connections.
+
+```sh
+node bin/agentic-ads serve --port 8787
+curl http://127.0.0.1:8787/health
+curl http://127.0.0.1:8787/v1/formats/sitcom
+curl http://127.0.0.1:8787/v1/qa-rules/R5
+curl -H 'Content-Type: application/json' -d '{"copy":"Browse listings","category":"housing"}' http://127.0.0.1:8787/v1/lint
+curl -H 'Content-Type: application/json' -d '{"format":"sitcom","site":"demo"}' http://127.0.0.1:8787/v1/plan
+```
+
+GET routes: `/health`, `/v1/formats`, `/v1/formats/:id`, `/v1/hooks`, `/v1/templates`,
+`/v1/qa-rules`, and `/v1/qa-rules/:id`. Health returns `{"status":"ok"}`.
+POST routes: `/v1/lint` and `/v1/plan`. Their results match the CLI and MCP tools.
+Blocked lint findings return HTTP 200 with `status: "blocked"`.
+Plans only produce dry-run results. Any `apply` field is refused, including nested fields and query parameters.
+JSON bodies have a 64 KiB limit. Requests have a ten-second timeout.
+Errors return JSON without stacks: 400 invalid input, 401 unauthorized, 404 missing route or item,
+405 wrong method, 408 timeout, 413 oversized body, and 415 unsupported media type.
+
+Set `AGENTIC_ADS_TOKEN` to require `Authorization: Bearer <token>` on every route, including health.
+The token needs 32 or more characters. Without a token, the server accepts only loopback `Host` values with its own port. This blocks DNS rebinding from a web page.
+A non-loopback host requires this setting. The server never logs bodies or tokens.
+Responses containing the configured token are refused. Use TLS through your admin site's server for remote access.
+
+An admin site's backend can call these routes and keep the token in server-side settings.
+Proxy calls through that backend for browser clients. CORS headers are absent by default.
+`AGENTIC_ADS_CORS_ORIGIN=https://admin.example` allows that exact origin in response headers.
+Unauthenticated browser preflight requests still return 401 when a token is set.
+Direct cross-origin browser calls with bearer headers therefore require the backend proxy.
+
+Run `node test/mutate-api.mjs` to prove authentication, body limits, and apply checks detect deliberate faults.
+The script restores the source and writes `test/artifacts/api-mutations.json`.

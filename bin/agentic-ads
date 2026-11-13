@@ -2,6 +2,9 @@
 import { execute, tools } from '../src/index.js';
 try {
   let [action, ...argv] = process.argv.slice(2);
+  if (action === 'serve') {
+    await (await import('../src/http.js')).serve(argv);
+  } else {
   const args = {};
   if (action === 'hooks') {
     action = argv[0] === 'show' ? 'get_hook' : argv[0] === 'pick' ? 'pick_hooks' : 'list_hooks';
@@ -40,6 +43,7 @@ try {
   const result = execute(action, args);
   console.log(JSON.stringify(result));
   if (result.status === 'blocked' || result.policy?.status === 'blocked') process.exitCode = 2;
+  }
 } catch (error) {
   console.log(JSON.stringify({ error: error.message })); process.exitCode = 1;
 }
