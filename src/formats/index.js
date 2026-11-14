@@ -34,3 +34,4 @@ export function planFormat(input = {}) {
     total: { low: sum('low'), high: sum('high'), note: f.estimatedCostUsd.note },
     warnings: ['Plan only; no providers or QA checks run.', 'NOT CHECKED blocks shipping. Record PASS or FAIL with a measured value. Voice fit and sound fit need the owner’s ear.', 'Historical source review dates are not current price verification.'] };
 }
+export { FORMAT_RANKS, FORMAT_ALIASES, resolveFormatId, getFormatRank, rankFormats, formatsInWave } from './ranks.js';

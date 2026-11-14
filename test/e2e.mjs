@@ -83,7 +83,7 @@ const reworks = {
 };
 const gateIds = 'continuity mouth_sync caption_timing dead_air tail shot_length words_per_second mute_test orientation black_corners eyes'.split(' ').concat(audioGateIds);
 check('format descriptors and unique IDs', () => {
-  assert.equal(formats.status, 0); assert.equal(formats.value.length, 15);
+  assert.equal(formats.status, 0); assert.equal(formats.value.length, 23);
   assert.deepEqual(Object.keys(gateDefinitions).sort(), [...gateIds].sort());
   assert.equal(new Set(formats.value.map(f => f.id)).size, formats.value.length, 'duplicate format ID');
   for (const f of formats.value) {
@@ -199,6 +199,33 @@ for (const f of formats.value) {
   });
   formatCases.push(['get_format', { id: f.id }, shown.value], ['plan_format', { format: f.id, site: 'demo' }, planned.value]);
 }
+const { getFormatRank, rankFormats, formatsInWave, wavespeedProvider } = await import('../src/index.js');
+check('impulse ranks and rotation waves', () => {
+  assert.equal(getFormatRank('notes-app').rank, 1);
+  assert.equal(getFormatRank('checklist').id, 'notes-app');
+  assert.deepEqual(formatsInWave('first').map(f => f.id), ['notes-app', 'imessage', 'lo-fi', 'blurred-pdf', 'native-organic']);
+  assert.deepEqual(formatsInWave('swap').map(f => f.id), ['whiteboard', 'us-vs-them', 'before-after']);
+  assert.deepEqual(formatsInWave('second').map(f => f.id), ['zack-d', 'stickman']);
+  assert.deepEqual(rankFormats(['stickman', 'notes-app', 'sitcom']).map(f => f.id), ['notes-app', 'stickman', 'sitcom']);
+});
+check('wavespeed provider stays dry-run and never prints the key', () => {
+  const preview = wavespeedProvider.run({ format: 'lo-fi', prompt: 'a candid still', aspect: '4:5' });
+  assert.equal(preview.dryRun, true); assert.equal(preview.image, null);
+  assert.ok(preview.command.includes('bytedance/seedream-v5.5'));
+  const prior = process.env.WAVESPEED_API_KEY;
+  delete process.env.WAVESPEED_API_KEY;
+  try {
+    assert.throws(() => wavespeedProvider.run({ format: 'lo-fi', apply: true, prompt: 'x' }), /WAVESPEED_API_KEY is not set/);
+    process.env.WAVESPEED_API_KEY = 'test-key';
+    assert.throws(() => wavespeedProvider.run({ format: 'lo-fi', apply: true, prompt: 'x' }), /Apply is unavailable/);
+    assert.ok(!JSON.stringify(wavespeedProvider.estimate({ format: 'lo-fi' })).includes('test-key'));
+    assert.ok(!JSON.stringify(preview).includes('test-key'));
+  } finally {
+    if (prior === undefined) delete process.env.WAVESPEED_API_KEY;
+    else process.env.WAVESPEED_API_KEY = prior;
+  }
+  assert.throws(() => wavespeedProvider.run({ format: 'notes-app' }), /HTML template/);
+});
 const templates = cli('list-templates');
 check('five templates and both ratios', () => {
   assert.equal(templates.status, 0); assert.equal(templates.value.length, 5);

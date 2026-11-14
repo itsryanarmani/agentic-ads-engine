@@ -54,3 +54,27 @@ export const templateProvider = {
     return { html, mime: 'text/html', width, height, image: null, sha256: createHash('sha256').update(html).digest('hex'), costMinor: 0, warnings: ['Stub: HTML only; image rendering is unavailable.'] };
   },
 };
+import { getFormatRank } from '../formats/ranks.js';
+/** WaveSpeed still backend. Dry-run by default; apply is unavailable. The key is read only from WAVESPEED_API_KEY. */
+export const wavespeedProvider = {
+  id: 'wavespeed',
+  capabilities: () => ({ formats: ['image/png'], aspectRatios: ['4:5', '9:16'], imageRendering: true, requiresEnv: 'WAVESPEED_API_KEY' }),
+  estimate(input = {}) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid provider input');
+    const row = getFormatRank(input.format ?? 'lo-fi');
+    if (row.backend === 'html') return { costMinor: 0, currency: 'USD', confidence: 'exact', backend: 'html', model: null };
+    return { costMinor: 2, currency: 'USD', confidence: 'estimate', backend: 'wavespeed', model: row.model };
+  },
+  run(input = {}) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Invalid provider input');
+    const estimate = wavespeedProvider.estimate(input);
+    if (estimate.backend === 'html') throw new Error('Use the HTML template renderer for this format');
+    const dryRun = input.apply !== true;
+    const prompt = typeof input.prompt === 'string' ? input.prompt : '';
+    const aspect = input.aspect === '9:16' ? '9:16' : '4:5';
+    const command = `wavespeed run ${estimate.model} -i prompt=${JSON.stringify(prompt)} -i aspect_ratio=${aspect} -i resolution=1.5k`;
+    if (dryRun) return { dryRun: true, applied: false, command, estimate, image: null, warnings: ['Dry-run; no API call.'] };
+    if (!process.env.WAVESPEED_API_KEY) throw new Error('WAVESPEED_API_KEY is not set');
+    throw new Error('Apply is unavailable');
+  },
+};

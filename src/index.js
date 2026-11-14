@@ -1,12 +1,12 @@
 import { listRules, getRule } from './qa/index.js';
 export { listRules, getRule, checklistFor, costRatchet } from './qa/index.js';
-import { listFormats, getFormat, planFormat } from './formats/index.js';
-export { listFormats, getFormat, planFormat };
+import { listFormats, getFormat, planFormat, getFormatRank, rankFormats, formatsInWave } from './formats/index.js';
+export { listFormats, getFormat, planFormat, getFormatRank, rankFormats, formatsInWave };
 import { templates } from './templates/index.js';
 import { hooks, selectFor, listHooks, getHook, pickHooks, emotions } from './hooks/index.js';
 import { lint } from './policy/index.js';
-import { templateProvider, guardCost } from './providers/index.js';
-export { listHooks, getHook, pickHooks, templates, hooks, selectFor, lint, templateProvider, guardCost };
+import { templateProvider, guardCost, wavespeedProvider } from './providers/index.js';
+export { listHooks, getHook, pickHooks, templates, hooks, selectFor, lint, templateProvider, guardCost, wavespeedProvider };
 export { readScores, writeScores } from './hooks/index.js';
 const string = { type: 'string' };
 const hookFilters = { format: string, emotion: { type: 'string', enum: emotions }, housing: { type: 'boolean' } };
