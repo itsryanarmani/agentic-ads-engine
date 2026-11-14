@@ -1,9 +1,9 @@
 {
   "name": "agentic-ads-engine",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Offline ad templates, hook selection, policy lint, and planning tools",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=20.10" },
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/itsryanarmani/agentic-ads-engine.git" },
   "homepage": "https://github.com/itsryanarmani/agentic-ads-engine#readme",
