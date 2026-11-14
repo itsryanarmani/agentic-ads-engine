@@ -68,6 +68,8 @@ The file store writes one JSON snapshot per site. Replacement is atomic; callers
 A missing file returns `{}`. Invalid files fail. Store directories must be trusted local directories.
 
 Providers implement `capabilities()`, `estimate(input)`, and `run(input)`.
+`wavespeedProvider` plans a WaveSpeed still from `WAVESPEED_API_KEY`. It dry-runs by default, refuses a live run when the env key is missing, and does not apply in this slice.
+`getFormatRank`, `rankFormats`, and `formatsInWave` order impulse formats (first: notes / iMessage / lo-fi / blurred-pdf / native-organic; first swaps: whiteboard / us-vs-them / before-after; second wave: zack-d / stickman; single tests: meme / chat-reveal).
 The stub returns escaped HTML, dimensions, a content hash, zero cost, and an explicit warning.
 It returns `image: null`. It has no browser, remote asset loading, image generation, or raster conversion.
 Brand colors accept six-digit hex values. The brand name is plain text.
@@ -116,7 +118,7 @@ node bin/agentic-ads formats show sitcom
 node bin/agentic-ads plan --format sitcom --site demo
 ```
 
-Fifteen formats cover the eight catalog recipes, lo-fi UGC, sitcom, storytime, talking objects, street interviews, Backrooms dialogue, and horror comedy.
+Twenty-three formats cover the original catalog plus impulse stills: notes-app, imessage, blurred-pdf, native-organic, us-vs-them, zack-d, meme, and chat-reveal. A checklist static uses notes-app.
 MCP adds `list_formats({costClass?, risk?})`, `get_format({id})`, and `plan_format({format, site, goal?, dryRun?})`.
 These tools return the same JSON as the commands above.
 The library exports `listFormats`, `getFormat`, and `planFormat` from the package root and `agentic-ads-engine/formats`.
@@ -173,7 +175,7 @@ Pass a format descriptor from `getFormat(id)` to `checklistFor`.
 Rules use `blocking` severity. `applies` names format kinds; `all` covers every format.
 Story formats include stickman, POV, before-after, lo-fi, sitcom, storytime, and the three new formats.
 Sitcom, street-interview and backrooms-dialogue have dialogue. Horror-comic has one character with speech. Street interviews use R24; horror-comic uses R25, and a Backrooms scare variant is planned as horror-comic.
-Talking-object has visible speech. All 15 formats have captions and TTS.
+Talking-object has visible speech. The original 15 video formats have captions and TTS. The eight impulse stills are HTML or WaveSpeed stills and do not require TTS.
 
 Run `node test/mutate-qa.mjs` to verify five deliberate faults and restore the files.
 Results go to `test/artifacts/qa-mutations.json` and `test/artifacts/e2e.json`.
