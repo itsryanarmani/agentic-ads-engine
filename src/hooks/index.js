@@ -1,9 +1,9 @@
 import { getFormat } from '../formats/index.js';
-import { readFileSync } from 'node:fs';
+import libraryJson from './library.json' with { type: 'json' };
 import { mkdir, readFile, open, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-export const hooks = Object.freeze(JSON.parse(readFileSync(new URL('./library.json', import.meta.url), 'utf8'))
+export const hooks = Object.freeze(structuredClone(libraryJson)
   .map(hook => Object.freeze({ ...hook, tags: Object.freeze(hook.tags), formats: Object.freeze(hook.formats) })));
 export const emotions = Object.freeze(['shock', 'fear', 'curiosity', 'relief', 'humor', 'pride']);
 /** Filters combine with AND; returned descriptors are independent copies. */

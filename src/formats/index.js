@@ -1,6 +1,6 @@
 import { checklistFor, gateChecklistFor, costRatchet } from '../qa/index.js';
-import { readFileSync } from 'node:fs';
-const library = JSON.parse(readFileSync(new URL('./library.json', import.meta.url), 'utf8'));
+import libraryJson from './library.json' with { type: 'json' };
+const library = libraryJson;
 const costs = ['free', 'cheap', 'mid', 'expensive'], risks = ['low', 'medium', 'high'];
 function argumentsFor(value, keys) {
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).some(k => !keys.includes(k))) throw new Error('Invalid format arguments');

@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
-const rules = JSON.parse(readFileSync(new URL('./rules.json', import.meta.url), 'utf8'));
-const gates = JSON.parse(readFileSync(new URL('./gates.json', import.meta.url), 'utf8'));
+import rulesJson from './rules.json' with { type: 'json' };
+import gatesJson from './gates.json' with { type: 'json' };
+const rules = rulesJson;
+const gates = gatesJson;
 export function gateChecklistFor(format) {
   return format.qaGates.map(id => {
     if (!Object.hasOwn(gates, id)) throw new Error('Unknown QA gate: ' + id);
