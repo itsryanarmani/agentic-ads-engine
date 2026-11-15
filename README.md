@@ -107,6 +107,28 @@ The E2E script spawns the CLI, MCP server, HTTP server, and a library integratio
 It records assertions in `test/artifacts/e2e.json`, which Git ignores and npm excludes.
 Run `npm run ci:local` before any future push. Publishing and pushing are separate operator actions.
 
+## Before you spend on Meta
+
+This package makes and checks drafts. It does not check that your site reports results to Meta.
+A plan with clean copy can still run for days with empty Results. Check these first.
+
+1. **Know what Results counts.** The Results column counts the ad set's optimization event. It does not
+   count link clicks, unless the ad set optimizes for link clicks.
+   An ad set that optimizes for `ADD_TO_CART` shows "—" on a site that never sends that event.
+2. **Pick an event the site really sends.** Check the browser and the server. A site with no cart
+   can send `INITIATED_CHECKOUT` or `LEAD`, but it cannot send `ADD_TO_CART`.
+3. **Prove the pixel loads on the landing page.** Fetch the page and read the loader. If a consent
+   cookie gates the pixel, find the code that sets that cookie. A gate that nothing can open is a dead pixel.
+4. **Compare pixel events with clicks.** Read `/{pixel}/stats?aggregation=event` and the ad insights
+   (`inline_link_clicks`, `landing_page_view`). Hundreds of clicks and a handful of events means the pixel is not firing.
+   `landing_page_view` also needs the pixel, so a large gap between it and `inline_link_clicks` is a pixel signal too.
+5. **Set the event before you publish.** Meta does not let you edit the conversion event of a published
+   ad set (`error_subcode 3260011`). To fix it later, create a copy of each ad set with the new
+   `promoted_object` event, copy the ads with the same `creative_id`, then pause the old ad set.
+6. **Keep the token out of logs.** Paged responses from `/{pixel}/stats` carry the access token in `paging.next`.
+
+Each check comes from a real failure.
+
 ## Video formats
 
 ```sh
